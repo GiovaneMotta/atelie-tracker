@@ -1,7 +1,19 @@
 const express = require("express");
 const crypto  = require("crypto");
 const app     = express();
+
 app.use(express.json());
+
+// Libera CORS para o WaSpeed conseguir enviar
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 const CONFIG = {
   META_PIXEL_ID:     process.env.META_PIXEL_ID     || "SEU_PIXEL_ID_AQUI",
@@ -33,7 +45,7 @@ const NOMES_ANUNCIOS = {
 };
 
 function log(msg, data) {
-  const ts = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  var ts = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
   console.log("[" + ts + "] " + msg, data ? JSON.stringify(data) : "");
 }
 
@@ -42,15 +54,15 @@ function gerarEventId(phone, timestamp) {
 }
 
 function hashPhone(phone) {
-  const limpo = String(phone).replace(/\D/g, "");
+  var limpo = String(phone).replace(/\D/g, "");
   return crypto.createHash("sha256").update(limpo).digest("hex");
 }
 
 function detectarAnuncioPorDDD(phone) {
-  const numero = String(phone).replace(/\D/g, "");
-  const semPais = numero.startsWith("55") ? numero.slice(2) : numero;
-  const ddd = parseInt(semPais.slice(0, 2), 10);
-  const tag = ANUNCIOS_DDD[ddd] || "ADS_OUTROS";
+  var numero = String(phone).replace(/\D/g, "");
+  var semPais = numero.startsWith("55") ? numero.slice(2) : numero;
+  var ddd = parseInt(semPais.slice(0, 2), 10);
+  var tag = ANUNCIOS_DDD[ddd] || "ADS_OUTROS";
   return { tag: tag, nome: NOMES_ANUNCIOS[tag], ddd: ddd };
 }
 
@@ -95,20 +107,44 @@ var vendasRegistradas = [];
 
 app.post("/webhook", async function(req, res) {
   try {
-    var body      = req.body;
-    var etiquetas = body.tags || body.labels || body.etiquetas || [];
-    var phone     = body.phone || body.number || (body.contact && body.contact.phone) || "";
-    var nome      = body.name  || (body.contact && body.contact.name) || "Cliente";
+    var body = req.body;
+    log("Webhook recebido", body);
+
+    // Tenta pegar etiquetas de varios formatos possiveis do WaSpeed
+    var etiquetas = [];
+    if (Array.isArray(body.tags))     etiquetas = body.tags;
+    else if (Array.isArray(body.labels))    etiquetas = body.labels;
+    else if (Array.isArray(body.etiquetas)) etiquetas = body.etiquetas;
+    else if (body.tag)     etiquetas = [body.tag];
+    else if (body.label)   etiquetas = [body.label];
+    else if (body.etiqueta) etiquetas = [body.etiqueta];
+
+    // Tambem verifica dentro de "event" ou "data"
+    if (etiquetas.length === 0 && body.event && body.event.tag) etiquetas = [body.event.tag];
+    if (etiquetas.length === 0 && body.data && body.data.tag)   etiquetas = [body.data.tag];
+
+    var phone = body.phone || body.number || body.numero ||
+      (body.contact && body.contact.phone) ||
+      (body.data && body.data.phone) || "";
+    var nome = body.name || body.nome ||
+      (body.contact && body.contact.name) ||
+      (body.data && body.data.name) || "Cliente";
     var timestamp = Date.now();
 
+    log("Etiquetas encontradas: " + JSON.stringify(etiquetas));
+    log("Telefone: " + phone);
+
     var temVenda = etiquetas.map(function(e) { return String(e).toUpperCase(); })
-      .includes(CONFIG.ETIQUETA_VENDA.toUpperCase());
+      .some(function(e) { return e === CONFIG.ETIQUETA_VENDA.toUpperCase(); });
 
     if (!temVenda) {
-      return res.json({ ok: true, acao: "ignorado" });
+      log("Sem etiqueta de venda — ignorando");
+      return res.json({ ok: true, acao: "ignorado", etiquetas_recebidas: etiquetas });
     }
+
     if (!phone) {
-      return res.status(400).json({ ok: false, erro: "Telefone ausente" });
+      log("Telefone ausente");
+      return res.status(400).json({ ok: false, erro: "Telefone ausente", body_recebido: body });
     }
 
     var anuncio = detectarAnuncioPorDDD(phone);
@@ -139,24 +175,6 @@ app.post("/webhook", async function(req, res) {
     log("Erro: " + err.message);
     return res.status(500).json({ ok: false, erro: err.message });
   }
-});
-
-app.post("/teste-venda", async function(req, res) {
-  req.body = {
-    tags:  ["VENDEU", req.body.valor_tag || "VALOR_250"],
-    phone: req.body.phone || "5598999999999",
-    name:  req.body.nome  || "Cliente Teste",
-  };
-  var mockRes = {
-    _status: 200, _body: null,
-    status: function(s) { this._status = s; return this; },
-    json:   function(b) { this._body = b; return this; },
-  };
-  await app._router.handle(
-    Object.assign({}, req, { url: "/webhook", path: "/webhook", method: "POST" }),
-    mockRes, function() {}
-  );
-  return res.status(mockRes._status).json(mockRes._body);
 });
 
 app.get("/vendas", function(req, res) {
