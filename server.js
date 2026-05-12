@@ -364,57 +364,69 @@ app.post(
       );
 
       // ========================================
-      // ETIQUETAS
-      // ========================================
-      var etiquetas = [];
+// ETIQUETAS
+// ========================================
+var etiquetas = [];
 
-      // raiz
-      if (
-        Array.isArray(body.tags)
-      ) {
+// labels raiz
+if (Array.isArray(body.labels)) {
+  etiquetas = body.labels;
+}
 
-        etiquetas = body.tags;
+// tags raiz
+else if (Array.isArray(body.tags)) {
+  etiquetas = body.tags;
+}
 
-      } else if (
-        Array.isArray(body.labels)
-      ) {
+// etiquetas raiz
+else if (Array.isArray(body.etiquetas)) {
+  etiquetas = body.etiquetas;
+}
 
-        etiquetas = body.labels;
+// eventDetails.labels
+else if (
+  body.eventDetails &&
+  body.eventDetails.labels
+) {
+  etiquetas = body.eventDetails.labels;
+}
 
-      } else if (
-        Array.isArray(body.etiquetas)
-      ) {
+// event.details.labels
+else if (
+  body.event &&
+  body.event.details &&
+  body.event.details.labels
+) {
+  etiquetas = body.event.details.labels;
+}
 
-        etiquetas = body.etiquetas;
-      }
+// fallback manual:
+// procura VENDEU dentro do JSON bruto
+if (
+  etiquetas.length === 0
+) {
 
-      // eventDetails.labels
-      else if (
-        body.eventDetails &&
-        Array.isArray(
-          body.eventDetails.labels
-        )
-      ) {
+  var bruto = JSON.stringify(body);
 
-        etiquetas =
-          body.eventDetails.labels;
-      }
+  var regex =
+    /"name":"([^"]+)"/g;
 
-      // campos únicos
-      else if (body.tag) {
+  var match;
 
-        etiquetas = [body.tag];
+  while (
+    (match = regex.exec(bruto)) !== null
+  ) {
 
-      } else if (body.label) {
+    etiquetas.push({
+      name: match[1]
+    });
+  }
+}
 
-        etiquetas = [body.label];
-
-      } else if (
-        body.etiqueta
-      ) {
-
-        etiquetas = [body.etiqueta];
-      }
+log(
+  "Etiquetas encontradas",
+  etiquetas
+);
 
       // fallback event.tag
       if (
