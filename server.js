@@ -28,9 +28,9 @@ const ETIQUETAS_ANUNCIO = {
 };
 
 // ── Memória por contato ──────────────────────────────────────
-// Salva anuncio e valor por número enquanto o servidor está ativo
+// Salva anuncio, valor e ctwa_clid por número enquanto o servidor está ativo
 var memoriaContatos = {};
-// ex: { "77099142541401": { anuncio: "ADS_SP_MG", valor: 423.68 } }
+// ex: { "77099142541401": { anuncio: "ADS_SP_MG", valor: 423.68, ctwa_clid: "AQD..." } }
 
 function log(msg, data) {
   var ts = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -70,15 +70,47 @@ function extrairValorDeEtiquetas(etiquetas) {
   return null;
 }
 
-async function enviarParaMeta(phone, valor, anuncio, eventId, timestamp) {
+// ── Extrai ctwa_clid do payload do webhook ───────────────────
+// O Meta injeta esse parâmetro quando o lead vem de anúncio Click-to-WhatsApp
+function extrairCtwaClid(body) {
+  // Tenta os caminhos mais comuns que o WaSpeed pode enviar
+  if (body.ctwa_clid) return body.ctwa_clid;
+  if (body.referral && body.referral.ctwa_clid) return body.referral.ctwa_clid;
+  if (body.referral && body.referral.source_id) return body.referral.source_id;
+  if (body.lastMessage && body.lastMessage.ctwa_clid) return body.lastMessage.ctwa_clid;
+  if (body.metadata && body.metadata.ctwa_clid) return body.metadata.ctwa_clid;
+  // Tenta parsear lastMessage se vier como string JSON
+  if (body.lastMessage && typeof body.lastMessage === "string") {
+    try {
+      var lm = JSON.parse(body.lastMessage);
+      if (lm.ctwa_clid) return lm.ctwa_clid;
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function enviarParaMeta(phone, valor, anuncio, eventId, timestamp, ctwaClid) {
   var url = "https://graph.facebook.com/v19.0/" + CONFIG.META_PIXEL_ID + "/events?access_token=" + CONFIG.META_ACCESS_TOKEN;
+
+  var userData = { ph: [hashPhone(phone)] };
+
+  // ── CHAVE DA ATRIBUIÇÃO ──────────────────────────────────
+  // ctwa_clid permite ao Meta identificar exatamente qual clique
+  // de anúncio gerou esta venda e registrar na coluna Compras
+  if (ctwaClid) {
+    userData.ctwa_clid = ctwaClid;
+    log("ctwa_clid incluido no evento: " + ctwaClid);
+  } else {
+    log("AVISO: ctwa_clid nao encontrado — atribuicao pode nao aparecer na coluna Compras");
+  }
+
   var payload = {
     data: [{
       event_name:    "Purchase",
       event_time:    Math.floor(timestamp / 1000),
       event_id:      eventId,
       action_source: "other",
-      user_data: { ph: [hashPhone(phone)] },
+      user_data:     userData,
       custom_data: {
         currency:         "BRL",
         value:            valor,
@@ -89,6 +121,7 @@ async function enviarParaMeta(phone, valor, anuncio, eventId, timestamp) {
       },
     }],
   };
+
   var response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -116,6 +149,15 @@ app.post("/webhook", async function(req, res) {
 
     if (!phone) {
       return res.json({ ok: true, acao: "ignorado", motivo: "sem telefone" });
+    }
+
+    // ── Tenta capturar ctwa_clid sempre que chegar um webhook ──
+    // O ctwa_clid vem na primeira mensagem do contato (quando clica no anúncio)
+    var ctwaClid = extrairCtwaClid(body);
+    if (ctwaClid) {
+      if (!memoriaContatos[phone]) memoriaContatos[phone] = {};
+      memoriaContatos[phone].ctwa_clid = ctwaClid;
+      log("ctwa_clid salvo na memoria para " + phone + ": " + ctwaClid);
     }
 
     // ── Salva anúncio na memória quando chegar etiqueta ADS_ ──
@@ -150,34 +192,33 @@ app.post("/webhook", async function(req, res) {
     // ── Processa a venda ─────────────────────────────────────
     var dadosContato = memoriaContatos[phone] || {};
 
-    // Pega anúncio da memória ou usa desconhecido
     var anuncio = {
       tag:  dadosContato.anuncio || "ADS_DESCONHECIDO",
       nome: ETIQUETAS_ANUNCIO[dadosContato.anuncio] || "Anuncio nao identificado",
     };
 
-    // Pega valor da memória ou padrão
-    var valor = dadosContato.valor || extrairValorDeEtiquetas(etiquetas) || CONFIG.VALOR_PADRAO;
+    var valor       = dadosContato.valor || extrairValorDeEtiquetas(etiquetas) || CONFIG.VALOR_PADRAO;
+    var clidFinal   = dadosContato.ctwa_clid || null;
+    var timestamp   = Date.now();
+    var eventId     = gerarEventId(phone, timestamp);
 
-    var timestamp = Date.now();
-    var eventId   = gerarEventId(phone, timestamp);
+    log("VENDA! " + nome + " | Anuncio: " + anuncio.nome + " | Valor: R$" + valor + " | ctwa_clid: " + (clidFinal || "nao encontrado"));
 
-    log("VENDA! " + nome + " | Anuncio: " + anuncio.nome + " | Valor: R$" + valor);
-
-    var respostaMeta = await enviarParaMeta(phone, valor, anuncio, eventId, timestamp);
+    var respostaMeta = await enviarParaMeta(phone, valor, anuncio, eventId, timestamp, clidFinal);
     log("META OK! Eventos recebidos: " + respostaMeta.events_received);
 
     // Limpa memória do contato após venda registrada
     delete memoriaContatos[phone];
 
     var registro = {
-      id:      eventId,
-      data:    new Date(timestamp).toLocaleString("pt-BR"),
-      cliente: nome,
-      phone:   "**" + String(phone).slice(-4),
-      anuncio: anuncio.nome,
-      valor:   valor,
-      meta_ok: respostaMeta.events_received,
+      id:         eventId,
+      data:       new Date(timestamp).toLocaleString("pt-BR"),
+      cliente:    nome,
+      phone:      "**" + String(phone).slice(-4),
+      anuncio:    anuncio.nome,
+      valor:      valor,
+      ctwa_clid:  clidFinal ? "sim ✅" : "nao ⚠️",
+      meta_ok:    respostaMeta.events_received,
     };
     vendasRegistradas.unshift(registro);
     if (vendasRegistradas.length > 200) vendasRegistradas.pop();
