@@ -20,25 +20,58 @@ const CONFIG = {
   PORT:              process.env.PORT || 3000,
 };
 
+// ================================================================
+//  MAPEAMENTO DDD -> ANUNCIO
+//
+//  ADS_MA_PA   = Maranhao e Para
+//  ADS_NE      = CE, PI, BA, PB, RN, PE
+//  ADS_SP_MG   = SP, MG, GO, Sul
+// ================================================================
 const ANUNCIOS_DDD = {
-  98: "ADS_MA_PA", 99: "ADS_MA_PA",
-  91: "ADS_MA_PA", 93: "ADS_MA_PA", 94: "ADS_MA_PA",
+
+  // ── Anuncio 1: Maranhao e Para ──────────────────────────────
+  98: "ADS_MA_PA", 99: "ADS_MA_PA",   // Maranhao
+  91: "ADS_MA_PA", 93: "ADS_MA_PA",   // Para (Belem, Santarem)
+  94: "ADS_MA_PA",                     // Para (Maraba)
+
+  // ── Anuncio 2: CE, PI, BA, PB, RN, PE ──────────────────────
+  85: "ADS_NE", 88: "ADS_NE",         // Ceara (Fortaleza, Juazeiro)
+  86: "ADS_NE", 89: "ADS_NE",         // Piaui (Teresina, Picos)
+  71: "ADS_NE", 73: "ADS_NE",         // Bahia (Salvador, Ilheus)
+  74: "ADS_NE", 75: "ADS_NE",         // Bahia (Juazeiro, Feira de Santana)
+  77: "ADS_NE",                        // Bahia (Vitoria da Conquista)
+  83: "ADS_NE",                        // Paraiba (Joao Pessoa, Campina Grande)
+  84: "ADS_NE",                        // Rio Grande do Norte (Natal)
+  81: "ADS_NE", 87: "ADS_NE",         // Pernambuco (Recife, Petrolina)
+
+  // ── Anuncio 3: SP, MG, GO e Sul ────────────────────────────
+  // Sao Paulo
   11: "ADS_SP_MG", 12: "ADS_SP_MG", 13: "ADS_SP_MG", 14: "ADS_SP_MG",
-  15: "ADS_SP_MG", 16: "ADS_SP_MG", 17: "ADS_SP_MG", 18: "ADS_SP_MG", 19: "ADS_SP_MG",
-  21: "ADS_SP_MG", 22: "ADS_SP_MG", 24: "ADS_SP_MG",
-  27: "ADS_SP_MG", 28: "ADS_SP_MG",
+  15: "ADS_SP_MG", 16: "ADS_SP_MG", 17: "ADS_SP_MG", 18: "ADS_SP_MG",
+  19: "ADS_SP_MG",
+  // Minas Gerais
   31: "ADS_SP_MG", 32: "ADS_SP_MG", 33: "ADS_SP_MG", 34: "ADS_SP_MG",
   35: "ADS_SP_MG", 37: "ADS_SP_MG", 38: "ADS_SP_MG",
-  41: "ADS_SP_MG", 42: "ADS_SP_MG", 43: "ADS_SP_MG", 44: "ADS_SP_MG",
-  45: "ADS_SP_MG", 46: "ADS_SP_MG", 47: "ADS_SP_MG", 48: "ADS_SP_MG", 49: "ADS_SP_MG",
-  51: "ADS_SP_MG", 53: "ADS_SP_MG", 54: "ADS_SP_MG", 55: "ADS_SP_MG",
+  // Goias e DF
   61: "ADS_SP_MG", 62: "ADS_SP_MG", 64: "ADS_SP_MG",
+  // Rio de Janeiro (bonus — proximo ao anuncio SP/MG)
+  21: "ADS_SP_MG", 22: "ADS_SP_MG", 24: "ADS_SP_MG",
+  // Espirito Santo
+  27: "ADS_SP_MG", 28: "ADS_SP_MG",
+  // Parana
+  41: "ADS_SP_MG", 42: "ADS_SP_MG", 43: "ADS_SP_MG", 44: "ADS_SP_MG",
+  45: "ADS_SP_MG", 46: "ADS_SP_MG",
+  // Santa Catarina
+  47: "ADS_SP_MG", 48: "ADS_SP_MG", 49: "ADS_SP_MG",
+  // Rio Grande do Sul
+  51: "ADS_SP_MG", 53: "ADS_SP_MG", 54: "ADS_SP_MG", 55: "ADS_SP_MG",
 };
 
 const NOMES_ANUNCIOS = {
-  ADS_MA_PA:  "Anuncio MA e PA",
-  ADS_SP_MG:  "Anuncio SP Capital e MG",
-  ADS_OUTROS: "Anuncio outras cidades",
+  ADS_MA_PA:  "Anuncio 1 - MA e PA",
+  ADS_NE:     "Anuncio 2 - CE, PI, BA, PB, RN, PE",
+  ADS_SP_MG:  "Anuncio 3 - SP, MG, GO e Sul",
+  ADS_OUTROS: "Outros (fora dos anuncios)",
 };
 
 function log(msg, data) {
@@ -70,12 +103,6 @@ function extrairValor(etiquetas) {
     if (match) return parseFloat(match[1].replace(",", "."));
   }
   return CONFIG.VALOR_PADRAO;
-}
-
-// Extrai o nome da etiqueta seja ela string ou objeto {name: "..."}
-function getNomeEtiqueta(e) {
-  if (typeof e === "object" && e !== null) return String(e.name || "").trim();
-  return String(e).trim();
 }
 
 async function enviarParaMeta(phone, valor, anuncio, eventId, timestamp) {
@@ -114,11 +141,8 @@ app.post("/webhook", async function(req, res) {
     var body = req.body;
     log("Webhook recebido", body);
 
-    // ── ETIQUETA DISPARADA ──────────────────────────────────
-    // O WaSpeed envia em eventDetails.name o nome da etiqueta
-    // que foi aplicada neste exato momento
+    // Etiqueta disparada neste momento (campo correto do WaSpeed)
     var etiquetaDisparada = "";
-
     if (body.eventDetails && body.eventDetails.name) {
       etiquetaDisparada = String(body.eventDetails.name).trim();
     } else if (body.event && body.event.details && body.event.details.name) {
@@ -127,7 +151,6 @@ app.post("/webhook", async function(req, res) {
 
     log("Etiqueta disparada: " + etiquetaDisparada);
 
-    // Só processa se a etiqueta disparada for "VENDEU"
     var temVenda = etiquetaDisparada.toUpperCase() === CONFIG.ETIQUETA_VENDA.toUpperCase();
 
     if (!temVenda) {
@@ -135,37 +158,31 @@ app.post("/webhook", async function(req, res) {
       return res.json({ ok: true, acao: "ignorado", etiqueta: etiquetaDisparada });
     }
 
-    // ── TELEFONE ────────────────────────────────────────────
     var phone = body.number || body.phone || body.numero ||
       (body.contact && body.contact.phone) || "";
-
-    log("Telefone: " + phone);
 
     if (!phone) {
       return res.status(400).json({ ok: false, erro: "Telefone ausente", body: body });
     }
 
-    // ── NOME ────────────────────────────────────────────────
     var nome = body.name || body.nome ||
       (body.contact && body.contact.name) || "Cliente";
 
-    // ── TODAS AS ETIQUETAS DO CONTATO (para pegar VALOR_xxx) ─
+    // Pega todas as etiquetas para detectar VALOR_xxx
     var todasEtiquetas = [];
     if (Array.isArray(body.labels))    todasEtiquetas = body.labels;
     else if (Array.isArray(body.tags)) todasEtiquetas = body.tags;
-    // adiciona a etiqueta disparada tbm
     todasEtiquetas.push(etiquetaDisparada);
 
-    // ── PROCESSA ────────────────────────────────────────────
     var anuncio   = detectarAnuncioPorDDD(phone);
     var valor     = extrairValor(todasEtiquetas);
     var timestamp = Date.now();
     var eventId   = gerarEventId(phone, timestamp);
 
-    log("Venda! " + nome + " | DDD " + anuncio.ddd + " -> " + anuncio.nome + " | R$" + valor);
+    log("VENDA! " + nome + " | DDD " + anuncio.ddd + " -> " + anuncio.nome + " | R$" + valor);
 
     var respostaMeta = await enviarParaMeta(phone, valor, anuncio, eventId, timestamp);
-    log("Enviado para Meta OK", respostaMeta);
+    log("Meta OK - eventos recebidos: " + respostaMeta.events_received);
 
     var registro = {
       id:      eventId,
@@ -198,6 +215,12 @@ app.get("/", function(req, res) {
     pixel:            CONFIG.META_PIXEL_ID !== "SEU_PIXEL_ID_AQUI" ? "configurado" : "pendente",
     etiqueta_venda:   CONFIG.ETIQUETA_VENDA,
     deteccao_anuncio: "automatica por DDD",
+    anuncios: {
+      ADS_MA_PA:  "MA e PA",
+      ADS_NE:     "CE, PI, BA, PB, RN, PE",
+      ADS_SP_MG:  "SP, MG, GO e Sul",
+      ADS_OUTROS: "Fora dos anuncios",
+    }
   });
 });
 
