@@ -178,6 +178,13 @@ function gerarEventId(phone, timestamp) {
     .slice(0, 32);
 }
 
+// Gera chave de deduplicação por telefone + dia calendário
+// Impede que o WaSpeed envie Purchase duplicado no mesmo dia para o mesmo contato
+function chaveDedup(phone) {
+  var hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  return "venda_" + String(phone) + "_" + hoje;
+}
+
 function garantirMemoria(phone) {
   if (!memoriaContatos[phone]) memoriaContatos[phone] = {};
   memoriaContatos[phone].ts = Date.now();
@@ -557,8 +564,15 @@ app.post("/webhook", async function (req, res) {
     var eventId      = gerarEventId(phone, timestamp);
 
     if (eventosEnviados.has(eventId)) {
-      warn("Duplicata ignorada: " + eventId);
+      warn("Duplicata ignorada (event_id): " + eventId);
       return res.json({ ok: true, acao: "duplicado_ignorado" });
+    }
+
+    // Deduplicação por telefone + dia — impede duplo VENDEU do WaSpeed no mesmo dia
+    var keyDedup = chaveDedup(phone);
+    if (eventosEnviados.has(keyDedup)) {
+      warn("Duplicata ignorada (mesmo contato hoje): " + phone);
+      return res.json({ ok: true, acao: "duplicado_ignorado_hoje", phone: "**" + phone.slice(-4) });
     }
 
     // ── Usa dados do contato que chegou no VENDEU — sem fallback ────────────────
@@ -586,6 +600,7 @@ app.post("/webhook", async function (req, res) {
 
     // 8. Registra
     eventosEnviados.add(eventId);
+    eventosEnviados.add(keyDedup); // bloqueia segundo VENDEU do mesmo contato hoje
     var registro = {
       id:         eventId,
       data:       new Date(timestamp).toLocaleString("pt-BR"),
