@@ -186,34 +186,49 @@ function extrairValorDeEtiquetas(etiquetas) {
 
 // Extrai ctwa_clid de todos os lugares possíveis no payload
 function extrairCtwaClid(body) {
+  // Caminhos diretos conhecidos
   var candidatos = [
     body.ctwa_clid,
     body.referral && body.referral.ctwa_clid,
     body.referral && body.referral.source_id,
     body.lastMessage && body.lastMessage.ctwa_clid,
+    body.lastMessage && body.lastMessage.referral && body.lastMessage.referral.ctwa_clid,
     body.metadata && body.metadata.ctwa_clid,
     body.context && body.context.ctwa_clid,
     body.message && body.message.ctwa_clid,
+    body.message && body.message.referral && body.message.referral.ctwa_clid,
+    body.eventDetails && body.eventDetails.ctwa_clid,
+    body.data && body.data.ctwa_clid,
+    body.data && body.data.referral && body.data.referral.ctwa_clid,
   ];
 
   for (var i = 0; i < candidatos.length; i++) {
     if (candidatos[i] && typeof candidatos[i] === "string") return candidatos[i];
   }
 
-  // Tenta parsear lastMessage se vier como string JSON
-  if (body.lastMessage && typeof body.lastMessage === "string") {
-    try {
-      var lm = JSON.parse(body.lastMessage);
-      if (lm && lm.ctwa_clid) return lm.ctwa_clid;
-    } catch (e) { /* não é JSON */ }
+  // Tenta parsear campos que podem vir como string JSON
+  var camposJSON = [body.lastMessage, body.referral, body.message, body.data, body.metadata];
+  for (var j = 0; j < camposJSON.length; j++) {
+    var campo = camposJSON[j];
+    if (campo && typeof campo === "string") {
+      try {
+        var parsed = JSON.parse(campo);
+        if (parsed && parsed.ctwa_clid) return parsed.ctwa_clid;
+        if (parsed && parsed.referral && parsed.referral.ctwa_clid) return parsed.referral.ctwa_clid;
+      } catch (e) { /* não é JSON */ }
+    }
   }
 
-  // Tenta parsear referral se vier como string JSON
-  if (body.referral && typeof body.referral === "string") {
-    try {
-      var ref = JSON.parse(body.referral);
-      if (ref && ref.ctwa_clid) return ref.ctwa_clid;
-    } catch (e) { /* não é JSON */ }
+  // Busca recursiva superficial — cobre qualquer campo de nível 2 que o WaSpeed adicionar
+  var chaves = Object.keys(body);
+  for (var k = 0; k < chaves.length; k++) {
+    var val = body[chaves[k]];
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      if (val.ctwa_clid && typeof val.ctwa_clid === "string") {
+        info("ctwa_clid encontrado em body." + chaves[k] + ".ctwa_clid");
+        return val.ctwa_clid;
+      }
+    }
   }
 
   return null;
@@ -385,6 +400,12 @@ app.post("/webhook", async function (req, res) {
   }
 
   info("Webhook recebido", body);
+
+  // ── LOG COMPLETO quando vier de anúncio Meta ──────────────────────────────
+  // Isso nos ajuda a encontrar onde o ctwa_clid está escondido no payload
+  if (body.eventID === "metaAds" || body.eventId === "metaAds") {
+    info(">>> PAYLOAD COMPLETO metaAds <<<", body);
+  }
 
   try {
     // 1. Extrai campos básicos
