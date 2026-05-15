@@ -35,7 +35,7 @@ const fs      = require("fs");
 const path    = require("path");
 
 const app = express();
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 app.use(function (req, res, next) {
@@ -285,6 +285,23 @@ function extrairCtwaClid(body) {
   return null;
 }
 
+// Extrai sourceId do __x_ctwaContext — identifica o anuncio de origem
+function extrairCtwaContext(body) {
+  var ctx = body.__x_ctwaContext || body.ctwaContext || null;
+  if (!ctx) return null;
+  if (typeof ctx === "string") {
+    try { ctx = JSON.parse(ctx); } catch(e) { return null; }
+  }
+  if (typeof ctx !== "object") return null;
+  return {
+    sourceId:         ctx.sourceId         || null,
+    sourceApp:        ctx.sourceApp        || null,
+    conversionSource: ctx.conversionSource || null,
+    ctwaSignals:      ctx.ctwaSignals      || null,
+    ctwa_clid:        ctx.ctwa_clid        || null,
+  };
+}
+
 // ── HTTP COM RETRY ────────────────────────────────────────────────────────────
 function httpsPost(url, payload) {
   return new Promise(function (resolve, reject) {
@@ -479,11 +496,27 @@ app.post("/webhook", async function (req, res) {
       info("Contato " + phone + " marcado como origem Meta Ads");
     }
 
-    // 4. Captura ctwa_clid (futuro)
+    // 4. Captura ctwa_clid — tenta em todos os lugares possíveis
     var ctwaClid = extrairCtwaClid(body);
+
+    // Tenta também dentro do __x_ctwaContext
+    var ctwaCtx = extrairCtwaContext(body);
+    if (ctwaCtx) {
+      info("__x_ctwaContext encontrado", ctwaCtx);
+      if (!ctwaClid && ctwaCtx.ctwa_clid) ctwaClid = ctwaCtx.ctwa_clid;
+      if (ctwaCtx.sourceId)  memoriaContatos[phone].sourceId  = ctwaCtx.sourceId;
+      if (ctwaCtx.sourceApp) memoriaContatos[phone].sourceApp = ctwaCtx.sourceApp;
+      if (ctwaCtx.conversionSource) memoriaContatos[phone].conversionSource = ctwaCtx.conversionSource;
+      // Marca como veioDeAd se conversionSource for FB_Ads
+      if (ctwaCtx.conversionSource === "FB_Ads") {
+        memoriaContatos[phone].veioDeAd = true;
+        info("veioDeAd marcado via __x_ctwaContext.conversionSource = FB_Ads");
+      }
+    }
+
     if (ctwaClid) {
       memoriaContatos[phone].ctwa_clid = ctwaClid;
-      info("ctwa_clid capturado para " + phone);
+      info("ctwa_clid capturado para " + phone + ": " + ctwaClid);
     }
 
     // 5. Salva etiquetas ADS_ e VALOR_
@@ -528,37 +561,9 @@ app.post("/webhook", async function (req, res) {
       return res.json({ ok: true, acao: "duplicado_ignorado" });
     }
 
-    // ── FALLBACK: WaSpeed mandou VENDEU com número errado ─────────────────────
-    // Se o contato que chegou não tem veioDeAd nem ctwa_clid na memória,
-    // busca na memória o contato mais recente com veioDeAd:true nos últimos
-    // 30 minutos — que é quase certamente quem acabou de comprar.
-    var phoneUsado = phone;
-    if (!dadosContato.veioDeAd && !dadosContato.ctwa_clid) {
-      var JANELA_MS  = 30 * 60 * 1000; // 30 minutos
-      var agora_ts   = Date.now();
-      var melhorPhone = null;
-      var melhorTs    = 0;
-
-      Object.keys(memoriaContatos).forEach(function (p) {
-        var d = memoriaContatos[p];
-        if ((d.veioDeAd || d.ctwa_clid) && d.ts && (agora_ts - d.ts) < JANELA_MS) {
-          if (d.ts > melhorTs) {
-            melhorTs    = d.ts;
-            melhorPhone = p;
-          }
-        }
-      });
-
-      if (melhorPhone) {
-        warn("WaSpeed mandou VENDEU com numero errado (" + phone + "). " +
-             "Usando contato com veioDeAd mais recente: " + melhorPhone);
-        phoneUsado   = melhorPhone;
-        dadosContato = memoriaContatos[melhorPhone];
-      } else {
-        warn("Nenhum contato com veioDeAd recente encontrado — venda sem atribuicao");
-      }
-    }
-
+    // ── Usa dados do contato que chegou no VENDEU — sem fallback ────────────────
+    // Fallback removido: era inseguro com múltiplos clientes simultâneos.
+    // Quando WaSpeed liberar ctwa_clid, a atribuição será 100% confiável.
     var anuncio = {
       tag:  dadosContato.anuncio || "ADS_DESCONHECIDO",
       nome: ETIQUETAS_ANUNCIO[dadosContato.anuncio] || "Anuncio nao identificado",
@@ -569,39 +574,36 @@ app.post("/webhook", async function (req, res) {
 
     info("VENDA | " + nome + " | " + anuncio.nome + " | R$" + valor +
          " | veioDeAd:" + veioDeAd + " | ctwa_clid:" + (clidFinal ? "sim" : "nao") +
-         " | phoneUsado:**" + phoneUsado.slice(-4));
+         " | phone:**" + phone.slice(-4));
 
     if (!veioDeAd && !clidFinal) {
-      warn("Sem origem de anuncio — venda enviada sem atribuicao de campanha");
+      warn("Sem origem de anuncio — venda registrada no pixel sem atribuicao de campanha");
     }
 
-    // 7. Envia para Meta (usa phoneUsado para o hash correto)
-    var respostaMeta = await enviarParaMeta(phoneUsado, nome, valor, anuncio, eventId, timestamp, clidFinal, veioDeAd);
+    // 7. Envia para Meta
+    var respostaMeta = await enviarParaMeta(phone, nome, valor, anuncio, eventId, timestamp, clidFinal, veioDeAd);
     info("Meta OK — eventos recebidos: " + respostaMeta.events_received);
 
     // 8. Registra
     eventosEnviados.add(eventId);
     var registro = {
-      id:           eventId,
-      data:         new Date(timestamp).toLocaleString("pt-BR"),
-      cliente:      nome,
-      phone:        "**" + phone.slice(-4),
-      phone_usado:  "**" + phoneUsado.slice(-4),
-      anuncio:      anuncio.nome,
-      valor:        valor,
-      ctwa_clid:    clidFinal ? "sim" : "nao",
-      veio_de_ad:   veioDeAd  ? "sim" : "nao",
-      atribuicao:   clidFinal ? "precisa" : (veioDeAd ? "possivel" : "sem atribuicao"),
-      meta_ok:      respostaMeta.events_received,
+      id:         eventId,
+      data:       new Date(timestamp).toLocaleString("pt-BR"),
+      cliente:    nome,
+      phone:      "**" + phone.slice(-4),
+      anuncio:    anuncio.nome,
+      valor:      valor,
+      ctwa_clid:  clidFinal ? "sim" : "nao",
+      veio_de_ad: veioDeAd  ? "sim" : "nao",
+      atribuicao: clidFinal ? "precisa" : (veioDeAd ? "possivel" : "sem atribuicao"),
+      meta_ok:    respostaMeta.events_received,
     };
 
     vendasRegistradas.unshift(registro);
     if (vendasRegistradas.length > 500) vendasRegistradas.pop();
     salvarJSON(CONFIG.VENDAS_FILE, vendasRegistradas);
 
-    // Limpa o contato usado (pode ser diferente do que chegou no webhook)
-    delete memoriaContatos[phoneUsado];
-    if (phoneUsado !== phone) delete memoriaContatos[phone];
+    delete memoriaContatos[phone];
     salvarJSON(CONFIG.MEMORIA_FILE, memoriaContatos);
 
     return res.json({ ok: true, registro: registro });
