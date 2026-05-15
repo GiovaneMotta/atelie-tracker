@@ -112,6 +112,64 @@ function hashPhone(phone) {
   return crypto.createHash("sha256").update(limpo).digest("hex");
 }
 
+// Hash SHA-256 genérico para strings (nome, cidade, estado, país)
+function hashStr(valor) {
+  if (!valor) return null;
+  var limpo = String(valor).trim().toLowerCase();
+  if (!limpo) return null;
+  return crypto.createHash("sha256").update(limpo).digest("hex");
+}
+
+// Extrai primeiro nome e sobrenome
+function extrairNomeSobrenome(nomeCompleto) {
+  var partes = String(nomeCompleto || "").trim().split(/\s+/);
+  return {
+    fn: partes[0] || null,
+    ln: partes.length > 1 ? partes[partes.length - 1] : null,
+  };
+}
+
+// Mapeia DDD brasileiro → { estado (sigla 2 letras), cidade principal }
+// O Meta exige estado em lowercase de 2 letras e cidade em lowercase sem acento
+var DDD_MAP = {
+  "11":"sp","12":"sp","13":"sp","14":"sp","15":"sp","16":"sp","17":"sp","18":"sp","19":"sp",
+  "21":"rj","22":"rj","24":"rj",
+  "27":"es","28":"es",
+  "31":"mg","32":"mg","33":"mg","34":"mg","35":"mg","37":"mg","38":"mg",
+  "41":"pr","42":"pr","43":"pr","44":"pr","45":"pr","46":"pr",
+  "47":"sc","48":"sc","49":"sc",
+  "51":"rs","53":"rs","54":"rs","55":"rs",
+  "61":"df",
+  "62":"go","64":"go",
+  "63":"to",
+  "65":"mt","66":"mt",
+  "67":"ms",
+  "68":"ac",
+  "69":"ro",
+  "71":"ba","73":"ba","74":"ba","75":"ba","77":"ba",
+  "79":"se",
+  "81":"pe","87":"pe",
+  "82":"al",
+  "83":"pb",
+  "84":"rn",
+  "85":"ce","88":"ce",
+  "86":"pi","89":"pi",
+  "91":"pa","93":"pa","94":"pa",
+  "92":"am","97":"am",
+  "95":"rr",
+  "96":"ap",
+  "98":"ma","99":"ma",
+};
+
+function inferirLocalizacao(phone) {
+  // Extrai DDD do número brasileiro
+  var limpo = String(phone || "").replace(/\D/g, "");
+  if (limpo.startsWith("55")) limpo = limpo.slice(2);
+  var ddd = limpo.slice(0, 2);
+  var estado = DDD_MAP[ddd] || null;
+  return { st: estado, country: "br" };
+}
+
 function gerarEventId(phone, timestamp) {
   return crypto
     .createHash("sha256")
@@ -280,14 +338,33 @@ async function httpsPostComRetry(url, payload) {
 //                         e registra na coluna Compras da campanha correta.
 //   "other"            → origem desconhecida — evento registrado sem atribuição.
 //
-async function enviarParaMeta(phone, valor, anuncio, eventId, timestamp, ctwaClid, veioDeAd) {
+async function enviarParaMeta(phone, nome, valor, anuncio, eventId, timestamp, ctwaClid, veioDeAd) {
   var phoneHash = hashPhone(phone);
   if (!phoneHash) throw new Error("Telefone invalido para hash: " + phone);
 
   var url = "https://graph.facebook.com/v19.0/" +
     CONFIG.META_PIXEL_ID + "/events?access_token=" + CONFIG.META_ACCESS_TOKEN;
 
-  var userData = { ph: [phoneHash] };
+  // ── Monta user_data com todos os sinais disponíveis ───────────────────────
+  var userData = {};
+
+  // Telefone (obrigatório)
+  userData.ph = [phoneHash];
+
+  // Nome — melhora a correspondência
+  var nomeParsed = extrairNomeSobrenome(nome);
+  if (nomeParsed.fn) userData.fn = [hashStr(nomeParsed.fn)];
+  if (nomeParsed.ln) userData.ln = [hashStr(nomeParsed.ln)];
+
+  // Localização inferida pelo DDD
+  var loc = inferirLocalizacao(phone);
+  if (loc.st)      userData.st      = [hashStr(loc.st)];
+  if (loc.country) userData.country = [hashStr(loc.country)];
+
+  // external_id — identificador único do contato no nosso sistema
+  userData.external_id = [hashStr(phone)];
+
+  // ctwa_clid — melhor sinal de atribuição (quando WaSpeed passar)
   if (ctwaClid) {
     userData.ctwa_clid = ctwaClid;
     info("Atribuicao via ctwa_clid incluida");
@@ -295,6 +372,7 @@ async function enviarParaMeta(phone, valor, anuncio, eventId, timestamp, ctwaCli
 
   var actionSource = (veioDeAd || ctwaClid) ? "system_generated" : "other";
   info("action_source = " + actionSource);
+  info("user_data campos enviados: " + Object.keys(userData).join(", "));
 
   var payload = {
     data: [{
@@ -498,7 +576,7 @@ app.post("/webhook", async function (req, res) {
     }
 
     // 7. Envia para Meta (usa phoneUsado para o hash correto)
-    var respostaMeta = await enviarParaMeta(phoneUsado, valor, anuncio, eventId, timestamp, clidFinal, veioDeAd);
+    var respostaMeta = await enviarParaMeta(phoneUsado, nome, valor, anuncio, eventId, timestamp, clidFinal, veioDeAd);
     info("Meta OK — eventos recebidos: " + respostaMeta.events_received);
 
     // 8. Registra
