@@ -450,6 +450,37 @@ app.post("/webhook", async function (req, res) {
       return res.json({ ok: true, acao: "duplicado_ignorado" });
     }
 
+    // ── FALLBACK: WaSpeed mandou VENDEU com número errado ─────────────────────
+    // Se o contato que chegou não tem veioDeAd nem ctwa_clid na memória,
+    // busca na memória o contato mais recente com veioDeAd:true nos últimos
+    // 30 minutos — que é quase certamente quem acabou de comprar.
+    var phoneUsado = phone;
+    if (!dadosContato.veioDeAd && !dadosContato.ctwa_clid) {
+      var JANELA_MS  = 30 * 60 * 1000; // 30 minutos
+      var agora_ts   = Date.now();
+      var melhorPhone = null;
+      var melhorTs    = 0;
+
+      Object.keys(memoriaContatos).forEach(function (p) {
+        var d = memoriaContatos[p];
+        if ((d.veioDeAd || d.ctwa_clid) && d.ts && (agora_ts - d.ts) < JANELA_MS) {
+          if (d.ts > melhorTs) {
+            melhorTs    = d.ts;
+            melhorPhone = p;
+          }
+        }
+      });
+
+      if (melhorPhone) {
+        warn("WaSpeed mandou VENDEU com numero errado (" + phone + "). " +
+             "Usando contato com veioDeAd mais recente: " + melhorPhone);
+        phoneUsado   = melhorPhone;
+        dadosContato = memoriaContatos[melhorPhone];
+      } else {
+        warn("Nenhum contato com veioDeAd recente encontrado — venda sem atribuicao");
+      }
+    }
+
     var anuncio = {
       tag:  dadosContato.anuncio || "ADS_DESCONHECIDO",
       nome: ETIQUETAS_ANUNCIO[dadosContato.anuncio] || "Anuncio nao identificado",
@@ -459,36 +490,40 @@ app.post("/webhook", async function (req, res) {
     var veioDeAd  = dadosContato.veioDeAd  || false;
 
     info("VENDA | " + nome + " | " + anuncio.nome + " | R$" + valor +
-         " | veioDeAd:" + veioDeAd + " | ctwa_clid:" + (clidFinal ? "sim" : "nao"));
+         " | veioDeAd:" + veioDeAd + " | ctwa_clid:" + (clidFinal ? "sim" : "nao") +
+         " | phoneUsado:**" + phoneUsado.slice(-4));
 
     if (!veioDeAd && !clidFinal) {
       warn("Sem origem de anuncio — venda enviada sem atribuicao de campanha");
     }
 
-    // 7. Envia para Meta
-    var respostaMeta = await enviarParaMeta(phone, valor, anuncio, eventId, timestamp, clidFinal, veioDeAd);
+    // 7. Envia para Meta (usa phoneUsado para o hash correto)
+    var respostaMeta = await enviarParaMeta(phoneUsado, valor, anuncio, eventId, timestamp, clidFinal, veioDeAd);
     info("Meta OK — eventos recebidos: " + respostaMeta.events_received);
 
     // 8. Registra
     eventosEnviados.add(eventId);
     var registro = {
-      id:         eventId,
-      data:       new Date(timestamp).toLocaleString("pt-BR"),
-      cliente:    nome,
-      phone:      "**" + phone.slice(-4),
-      anuncio:    anuncio.nome,
-      valor:      valor,
-      ctwa_clid:  clidFinal ? "sim" : "nao",
-      veio_de_ad: veioDeAd  ? "sim" : "nao",
-      atribuicao: clidFinal ? "precisa" : (veioDeAd ? "possivel" : "sem atribuicao"),
-      meta_ok:    respostaMeta.events_received,
+      id:           eventId,
+      data:         new Date(timestamp).toLocaleString("pt-BR"),
+      cliente:      nome,
+      phone:        "**" + phone.slice(-4),
+      phone_usado:  "**" + phoneUsado.slice(-4),
+      anuncio:      anuncio.nome,
+      valor:        valor,
+      ctwa_clid:    clidFinal ? "sim" : "nao",
+      veio_de_ad:   veioDeAd  ? "sim" : "nao",
+      atribuicao:   clidFinal ? "precisa" : (veioDeAd ? "possivel" : "sem atribuicao"),
+      meta_ok:      respostaMeta.events_received,
     };
 
     vendasRegistradas.unshift(registro);
     if (vendasRegistradas.length > 500) vendasRegistradas.pop();
     salvarJSON(CONFIG.VENDAS_FILE, vendasRegistradas);
 
-    delete memoriaContatos[phone];
+    // Limpa o contato usado (pode ser diferente do que chegou no webhook)
+    delete memoriaContatos[phoneUsado];
+    if (phoneUsado !== phone) delete memoriaContatos[phone];
     salvarJSON(CONFIG.MEMORIA_FILE, memoriaContatos);
 
     return res.json({ ok: true, registro: registro });
