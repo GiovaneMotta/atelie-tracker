@@ -265,6 +265,9 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
   box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; }
 .modal h3 { margin-bottom: 16px; }
 .btn-link.danger { color: var(--bad); }
+.copy-box { display: flex; align-items: center; gap: 10px; background: var(--cream-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 8px 12px; }
+.copy-box code { flex: 1; word-break: break-all; font-size: .82rem; }
 
 /* ============================ Tarefas ============================ */
 .task-done { opacity: .55; }

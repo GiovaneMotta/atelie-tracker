@@ -77,6 +77,18 @@ export const WascriptService = {
     return post('modificar-etiquetas', { phone: normalizePhone(phone), actions });
   },
 
+  /** Teste de conexão read-only (lista etiquetas). Não envia nada.
+   *  Distingue token ausente/ inválido de conexão ok. */
+  async testConnection(): Promise<{ configured: boolean; ok: boolean; status: number }> {
+    if (!process.env.WASCRIPT_TOKEN) return { configured: false, ok: false, status: 0 };
+    try {
+      const resp = await fetch(`${BASE}/api/listar-etiquetas/${token()}`, { headers: { Accept: 'application/json' } });
+      return { configured: true, ok: resp.ok, status: resp.status };
+    } catch {
+      return { configured: true, ok: false, status: 0 };
+    }
+  },
+
   /** Converte um payload de webhook de entrada em mensagem canônica.
    *  TODO(Fase 2b): implementar quando capturarmos um payload REAL do
    *  WaScript (a spec pública não documenta o webhook). Até lá, o receptor

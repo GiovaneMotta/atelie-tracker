@@ -15,6 +15,7 @@ import Tarefas from './pages/Tarefas';
 import Conhecimento from './pages/Conhecimento';
 import Automacoes from './pages/Automacoes';
 import ConfigIA from './pages/ConfigIA';
+import ConfigWhatsApp from './pages/ConfigWhatsApp';
 import Expedicao from './pages/Expedicao';
 import NovoEnvio from './pages/NovoEnvio';
 import Shipments from './pages/Shipments';
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="tarefas" element={<Tarefas />} />
         <Route path="conhecimento" element={<Conhecimento />} />
         <Route path="config/ia" element={<ConfigIA />} />
+        <Route path="config/whatsapp" element={<ConfigWhatsApp />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="automacoes" element={<Automacoes />} />
         <Route path="campanhas" element={<Placeholder title="Campanhas" phase="Fase 8" />} />
