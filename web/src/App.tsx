@@ -13,6 +13,7 @@ import Agenda from './pages/Agenda';
 import Inbox from './pages/Inbox';
 import Tarefas from './pages/Tarefas';
 import Conhecimento from './pages/Conhecimento';
+import Automacoes from './pages/Automacoes';
 import ConfigIA from './pages/ConfigIA';
 import Expedicao from './pages/Expedicao';
 import NovoEnvio from './pages/NovoEnvio';
@@ -72,7 +73,7 @@ export default function App() {
         <Route path="conhecimento" element={<Conhecimento />} />
         <Route path="config/ia" element={<ConfigIA />} />
         <Route path="inbox" element={<Inbox />} />
-        <Route path="automacoes" element={<Placeholder title="Automações" phase="Fase 4" />} />
+        <Route path="automacoes" element={<Automacoes />} />
         <Route path="campanhas" element={<Placeholder title="Campanhas" phase="Fase 8" />} />
         <Route path="config" element={<Placeholder title="Configurações" phase="Fase 1c+" />} />
         <Route path="*" element={<Navigate to="/" replace />} />

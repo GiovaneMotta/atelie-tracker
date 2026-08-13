@@ -339,6 +339,57 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 
 @media (max-width: 900px) { .agenda-grid { grid-template-columns: 1fr; } }
 
+/* ============================ Automações / Flow builder ============================ */
+.flow-name { font-family: var(--serif); font-size: 1.5rem; border: none; border-bottom: 1px dashed var(--line);
+  background: transparent; outline: none; color: var(--ink); min-width: 260px; }
+.flow-name:focus { border-color: var(--terracota); }
+.flow-issues { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.issue-err { color: var(--bad); font-size: .85rem; }
+.issue-warn { color: var(--warn); font-size: .85rem; }
+
+.flow-wrap { display: flex; gap: 12px; height: calc(100vh - 200px); }
+.flow-palette { width: 190px; flex-shrink: 0; background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 12px; overflow-y: auto; }
+.flow-palette strong { display: block; margin-bottom: 8px; font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); }
+.palette-btn { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--cream); margin-bottom: 6px; cursor: pointer; font-size: .85rem; }
+.palette-btn:hover { background: var(--cream-2); border-color: var(--terracota-soft); }
+.flow-palette hr { border: none; border-top: 1px solid var(--line); margin: 12px 0; }
+
+.flow-canvas { flex: 1; overflow: auto; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius);
+  background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 22px 22px; position: relative; }
+.flow-inner { position: relative; }
+.flow-edges { position: absolute; top: 0; left: 0; pointer-events: none; }
+.edge-path { fill: none; stroke: var(--terracota); stroke-width: 2; opacity: .55; }
+.flow-node { position: absolute; background: var(--white); border: 2px solid var(--terracota-soft);
+  border-radius: 10px; box-shadow: var(--shadow-sm); cursor: grab; overflow: hidden; user-select: none; }
+.flow-node.sel { box-shadow: 0 0 0 3px rgba(201,131,106,.35); }
+.flow-node-head { color: #fff; font-size: .78rem; font-weight: 600; padding: 5px 8px; }
+.flow-node-body { padding: 6px 8px; font-size: .78rem; color: var(--ink-soft); min-height: 22px; }
+
+.flow-config { width: 300px; flex-shrink: 0; background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px; overflow-y: auto; }
+.flow-config-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.field-label { font-size: .82rem; color: var(--ink-soft); font-weight: 500; display: block; margin: 8px 0 6px; }
+.opt-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.opt-row input { flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius-sm); min-width: 0; }
+.opt-row select { flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius-sm); min-width: 0; }
+
+.sim-modal { max-width: 420px; }
+.sim-chat { height: 340px; overflow-y: auto; background: linear-gradient(var(--cream), var(--cream-2));
+  border-radius: var(--radius-sm); padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.sim-msg { max-width: 82%; padding: 7px 11px; border-radius: 12px; font-size: .88rem; }
+.sim-msg.bot { align-self: flex-start; background: var(--white); box-shadow: var(--shadow-sm); }
+.sim-msg.user { align-self: flex-end; background: #e7f3e4; }
+.sim-msg.sys { align-self: center; background: transparent; color: var(--ink-soft); font-size: .78rem; }
+.sim-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+@media (max-width: 900px) {
+  .flow-wrap { flex-direction: column; height: auto; }
+  .flow-palette, .flow-config { width: 100%; }
+  .flow-canvas { height: 60vh; }
+}
+
 /* ============================ Responsivo ============================ */
 @media (max-width: 860px) {
   .board-col { flex-basis: 200px; }
