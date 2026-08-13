@@ -1,0 +1,33 @@
+# =====================================================================
+# netlify.toml — deploy do CRM (site SEPARADO do catálogo público).
+# No Netlify, aponte o "Base directory" para: atelie-crm
+# =====================================================================
+[build]
+  # web/ = app React (Vite). netlify/functions = API/webhooks.
+  # 'npm install' (não 'ci'): o repo não versiona package-lock.json.
+  command   = "npm --prefix web install && npm --prefix web run build"
+  publish   = "web/dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# IMPORTANTE: regras específicas ANTES do catch-all (Netlify = 1º match vence).
+
+# Atalhos amigáveis da API interna.  /api/customers -> função "customers"
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/:splat"
+  status = 200
+
+# Webhooks (entrada de terceiros).  /webhooks/wascript -> função "webhook-wascript"
+[[redirects]]
+  from   = "/webhooks/*"
+  to     = "/.netlify/functions/webhook-:splat"
+  status = 200
+
+# SPA (catch-all, POR ÚLTIMO): qualquer outra rota cai no index.html do React.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
