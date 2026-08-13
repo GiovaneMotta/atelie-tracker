@@ -14,8 +14,10 @@ const NAV: NavItemDef[] = [
   { to: '/clientes', label: 'Clientes', icon: '👥', perm: 'customers.read' },
   { to: '/produtos', label: 'Produtos', icon: '🧸', perm: 'products.read' },
   { to: '/pedidos', label: 'Pedidos', icon: '📦', perm: 'orders.read' },
+  { to: '/tarefas', label: 'Tarefas', icon: '✅' },
   { to: '/automacoes', label: 'Automações', icon: '🤖', perm: 'automations.read' },
   { to: '/campanhas', label: 'Campanhas', icon: '📣', perm: 'campaigns.write' },
+  { to: '/conhecimento', label: 'Conhecimento', icon: '📚' },
   { to: '/config/frenet', label: 'Frenet', icon: '⚙️', perm: 'settings.read' },
   { to: '/config/logs', label: 'Logs', icon: '📋', perm: 'settings.read' },
 ];

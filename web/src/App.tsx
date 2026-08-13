@@ -9,6 +9,8 @@ import Products from './pages/Products';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
 import Funil from './pages/Funil';
+import Tarefas from './pages/Tarefas';
+import Conhecimento from './pages/Conhecimento';
 import Expedicao from './pages/Expedicao';
 import NovoEnvio from './pages/NovoEnvio';
 import Shipments from './pages/Shipments';
@@ -62,6 +64,8 @@ export default function App() {
         <Route path="config/frenet" element={<FreteSettings />} />
         <Route path="config/logs" element={<Logs />} />
         <Route path="funil" element={<Funil />} />
+        <Route path="tarefas" element={<Tarefas />} />
+        <Route path="conhecimento" element={<Conhecimento />} />
         <Route path="inbox" element={<Placeholder title="Inbox / WhatsApp" phase="Fase 2" />} />
         <Route path="automacoes" element={<Placeholder title="Automações" phase="Fase 4" />} />
         <Route path="campanhas" element={<Placeholder title="Campanhas" phase="Fase 8" />} />

@@ -266,6 +266,23 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .modal h3 { margin-bottom: 16px; }
 .btn-link.danger { color: var(--bad); }
 
+/* ============================ Tarefas ============================ */
+.task-done { opacity: .55; }
+.task-done strong { text-decoration: line-through; }
+.badge.prio-alta { background: #fbeae8; color: var(--bad); }
+.badge.prio-normal { background: var(--cream-2); color: var(--ink-soft); }
+.badge.prio-baixa { background: #eef2ee; color: var(--ink-soft); }
+
+/* ============================ Base de Conhecimento ============================ */
+.kb-list { display: flex; flex-direction: column; gap: 10px; }
+.kb-item { display: flex; justify-content: space-between; gap: 14px; padding: 12px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--cream); }
+.kb-item.kb-off { opacity: .6; }
+.kb-item-main { min-width: 0; }
+.kb-item-main strong { display: block; }
+.kb-item-main p { margin: 4px 0 0; font-size: .88rem; white-space: pre-wrap; }
+.kb-item-actions { display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0; }
+
 /* ============================ Responsivo ============================ */
 @media (max-width: 860px) {
   .board-col { flex-basis: 200px; }
