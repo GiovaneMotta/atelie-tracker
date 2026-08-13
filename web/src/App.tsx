@@ -8,6 +8,7 @@ import CustomerDetail from './pages/CustomerDetail';
 import Products from './pages/Products';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
+import Funil from './pages/Funil';
 import Expedicao from './pages/Expedicao';
 import NovoEnvio from './pages/NovoEnvio';
 import Shipments from './pages/Shipments';
@@ -60,8 +61,8 @@ export default function App() {
         <Route path="envios/:id" element={<ShipmentDetail />} />
         <Route path="config/frenet" element={<FreteSettings />} />
         <Route path="config/logs" element={<Logs />} />
+        <Route path="funil" element={<Funil />} />
         <Route path="inbox" element={<Placeholder title="Inbox / WhatsApp" phase="Fase 2" />} />
-        <Route path="funil" element={<Placeholder title="Funil de vendas" phase="Fase 4" />} />
         <Route path="automacoes" element={<Placeholder title="Automações" phase="Fase 4" />} />
         <Route path="campanhas" element={<Placeholder title="Campanhas" phase="Fase 8" />} />
         <Route path="config" element={<Placeholder title="Configurações" phase="Fase 1c+" />} />

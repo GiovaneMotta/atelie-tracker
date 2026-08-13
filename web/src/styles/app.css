@@ -238,6 +238,34 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .board-name { display: block; }
 .board-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
 
+/* ============================ Funil / Kanban ============================ */
+.kanban { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
+.kanban-col { flex: 0 0 260px; background: var(--cream-2); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px; display: flex; flex-direction: column; max-height: calc(100vh - 200px); }
+.kanban-col-head { display: flex; align-items: center; gap: 8px; padding: 4px 4px 8px; }
+.kanban-col-head strong { font-family: var(--sans); font-size: .9rem; flex: 1; }
+.kanban-count { background: var(--white); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: .78rem; color: var(--ink-soft); }
+.stage-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--terracota-soft); flex-shrink: 0; }
+.stage-dot.won { background: var(--ok); }
+.stage-dot.lost { background: var(--bad); }
+.kanban-total { font-size: .78rem; color: var(--terracota-dark); font-weight: 600; padding: 0 4px 8px; }
+.kanban-cards { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.kanban-empty { text-align: center; color: var(--line); padding: 8px; }
+.lead-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px 12px; cursor: grab; box-shadow: var(--shadow-sm); }
+.lead-card:active { cursor: grabbing; }
+.lead-card:hover { border-color: var(--terracota-soft); }
+.lead-card strong { display: block; font-family: var(--sans); font-size: .9rem; }
+.lead-interest { font-size: .82rem; color: var(--ink-soft); margin-top: 4px; }
+.lead-value { margin-top: 6px; font-weight: 600; color: var(--terracota-dark); font-size: .85rem; }
+
+/* ============================ Modal ============================ */
+.modal-scrim { position: fixed; inset: 0; background: rgba(50,40,35,.4); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.modal { background: var(--white); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 440px;
+  box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 16px; }
+.btn-link.danger { color: var(--bad); }
+
 /* ============================ Responsivo ============================ */
 @media (max-width: 860px) {
   .board-col { flex-basis: 200px; }
