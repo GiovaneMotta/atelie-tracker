@@ -1,24 +1,23 @@
 /* ================================================================
-   WascriptService — camada desacoplada do WhatsApp (WaScript/WaSpeed) (§5).
-   Doc de referência: https://api-whatsapp.wascript.com.br/api-docs/
+   WascriptService — WhatsApp via WaScript/WaSpeed (§5).
+   Doc: https://api-whatsapp.wascript.com.br/api-docs/
    ----------------------------------------------------------------
-   Envio (texto/mídia/documento) implementado como chamadas HTTP reais,
-   ATIVADAS somente quando WASCRIPT_TOKEN estiver configurado. Como o
-   caminho exato de cada rota pode variar conforme a versão da conta, os
-   paths ficam centralizados em ROUTES e podem ser ajustados sem tocar na
-   lógica. NÃO inventamos rota não documentada: se faltar, lança erro claro.
-   Token só no backend (env).
+   API real (confirmada na spec):
+     • O TOKEN vai no CAMINHO da URL: /api/enviar-<tipo>/{token}
+     • POST /api/enviar-texto/{token}      body { phone, message }
+     • POST /api/enviar-imagem/{token}     body { phone, base64, message? }
+     • POST /api/enviar-video/{token}      body { phone, base64, message? }
+     • POST /api/enviar-audio/{token}      body { phone, base64 }
+     • POST /api/enviar-documento/{token}  body { phone, base64, name? }
+     • POST /api/modificar-etiquetas/{token} body { phone, actions }
+   Segurança: o token (env WASCRIPT_TOKEN) fica no backend e NUNCA é
+   registrado em log (logamos só o nome da rota, sem o token).
+   Recebimento: não há webhook documentado nesta spec → parseInbound
+   permanece TODO até capturarmos um payload real (não inventamos).
    ================================================================ */
 import { logIntegration } from '../log';
 
 const BASE = process.env.WASCRIPT_BASE_URL || 'https://api-whatsapp.wascript.com.br';
-
-// Ajustar conforme a documentação/instância da conta (§7: não inventar).
-const ROUTES = {
-  sendText: '/api/enviar-texto',
-  sendMedia: '/api/enviar-imagem',
-  sendDocument: '/api/enviar-documento',
-};
 
 function token(): string {
   const t = process.env.WASCRIPT_TOKEN;
@@ -26,46 +25,63 @@ function token(): string {
   return t;
 }
 
-async function call(path: string, body: Record<string, unknown>) {
-  const resp = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${token()}`,
-    },
-    body: JSON.stringify(body),
-  });
-  const data: any = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    await logIntegration('WHATSAPP', 'error', 'Falha no envio WaScript', { path, status: resp.status });
-    throw new Error('Falha ao enviar pela WaScript.');
-  }
-  await logIntegration('WHATSAPP', 'info', 'Mensagem enviada via WaScript', { path });
-  return data;
-}
-
-/** Normaliza número para DDI 55 + dígitos (padrão do ateliê). */
+/** DDI 55 + apenas dígitos (padrão do ateliê). */
 export function normalizePhone(phone: string): string {
   let d = (phone || '').replace(/\D/g, '');
   if (d.length <= 11) d = '55' + d;
   return d;
 }
 
+/** POST para uma rota do WaScript. `route` é só o nome (sem token) — é o
+ *  que vai para o log; a URL real (com token) nunca é logada. */
+async function post(route: string, body: Record<string, unknown>): Promise<any> {
+  const url = `${BASE}/api/${route}/${token()}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data: any = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    await logIntegration('WHATSAPP', 'error', 'Falha no envio WaScript', { route, status: resp.status });
+    throw new Error(`Falha ao enviar pela WaScript (${resp.status}).`);
+  }
+  await logIntegration('WHATSAPP', 'info', 'Enviado via WaScript', { route });
+  return data;
+}
+
+/** Baixa uma URL e devolve em base64 (para imagem/documento). */
+async function urlToBase64(url: string): Promise<string> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('Não foi possível baixar a mídia.');
+  return Buffer.from(await r.arrayBuffer()).toString('base64');
+}
+
 export const WascriptService = {
-  async sendText(phone: string, text: string) {
-    return call(ROUTES.sendText, { phone: normalizePhone(phone), message: text });
-  },
-  async sendImage(phone: string, imageUrl: string, caption?: string) {
-    return call(ROUTES.sendMedia, { phone: normalizePhone(phone), url: imageUrl, caption: caption ?? '' });
-  },
-  async sendDocument(phone: string, docUrl: string, filename?: string) {
-    return call(ROUTES.sendDocument, { phone: normalizePhone(phone), url: docUrl, filename: filename ?? 'arquivo' });
+  async sendText(phone: string, message: string): Promise<any> {
+    return post('enviar-texto', { phone: normalizePhone(phone), message });
   },
 
-  /** Converte um payload de webhook em mensagem canônica. TODO(Fase 2):
-   *  mapear os campos reais assim que confirmarmos o formato do webhook. */
-  parseInbound(_payload: unknown): { external_id?: string; from?: string; type?: string; body?: string } | null {
+  /** `image` pode ser base64 puro ou uma URL (que baixamos e convertemos). */
+  async sendImage(phone: string, image: string, caption?: string): Promise<any> {
+    const base64 = /^https?:\/\//i.test(image) ? await urlToBase64(image) : image;
+    return post('enviar-imagem', { phone: normalizePhone(phone), base64, message: caption ?? '' });
+  },
+
+  async sendDocument(phone: string, doc: string, name?: string): Promise<any> {
+    const base64 = /^https?:\/\//i.test(doc) ? await urlToBase64(doc) : doc;
+    return post('enviar-documento', { phone: normalizePhone(phone), base64, name: name ?? 'arquivo' });
+  },
+
+  async modifyLabels(phone: string, actions: unknown[]): Promise<any> {
+    return post('modificar-etiquetas', { phone: normalizePhone(phone), actions });
+  },
+
+  /** Converte um payload de webhook de entrada em mensagem canônica.
+   *  TODO(Fase 2b): implementar quando capturarmos um payload REAL do
+   *  WaScript (a spec pública não documenta o webhook). Até lá, o receptor
+   *  `webhook-wascript` só armazena o payload cru para inspeção. */
+  parseInbound(_payload: unknown): null {
     return null;
   },
 };

@@ -283,6 +283,49 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .kb-item-main p { margin: 4px 0 0; font-size: .88rem; white-space: pre-wrap; }
 .kb-item-actions { display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0; }
 
+/* ============================ Inbox ============================ */
+.inbox { display: flex; gap: 0; height: calc(100vh - 96px); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; background: var(--white); }
+.inbox-list { width: 320px; flex-shrink: 0; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+.inbox-list-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.inbox-list-scroll { overflow-y: auto; flex: 1; }
+.conv-item { display: flex; gap: 10px; width: 100%; text-align: left; padding: 12px 14px; border: none;
+  background: transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
+.conv-item:hover { background: var(--cream); }
+.conv-item.is-active { background: var(--cream-2); }
+.conv-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--terracota-soft); color: var(--terracota-dark);
+  display: grid; place-items: center; font-weight: 600; flex-shrink: 0; }
+.conv-item-body { flex: 1; min-width: 0; }
+.conv-item-top { display: flex; justify-content: space-between; gap: 8px; }
+.conv-item-top strong { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-time { font-size: .72rem; color: var(--ink-soft); flex-shrink: 0; }
+.conv-item-bottom { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-top: 2px; }
+.conv-preview { font-size: .82rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-unread { background: var(--terracota); color: #fff; border-radius: 999px; font-size: .7rem; padding: 1px 7px; flex-shrink: 0; }
+
+.inbox-thread { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.inbox-empty { flex: 1; display: grid; place-items: center; }
+.thread-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.thread-head-actions { display: flex; align-items: center; gap: 10px; }
+.btn-sm { padding: 6px 12px; font-size: .82rem; }
+.ai-pill { font-size: .74rem; padding: 3px 10px; border-radius: 999px; text-transform: capitalize; background: var(--cream-2); color: var(--ink-soft); }
+.ai-pill.ativa { background: #e6f2ea; color: var(--ok); }
+.ai-pill.humano { background: #fdf1e7; color: var(--terracota-dark); }
+.ai-pill.pausada { background: #f3ebe4; color: var(--ink-soft); }
+
+.thread-msgs { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 8px;
+  background: linear-gradient(var(--cream), var(--cream-2)); }
+.bubble { max-width: 74%; padding: 8px 12px; border-radius: 14px; box-shadow: var(--shadow-sm); }
+.bubble.in { align-self: flex-start; background: var(--white); border-bottom-left-radius: 4px; }
+.bubble.out { align-self: flex-end; background: #e7f3e4; border-bottom-right-radius: 4px; }
+.bubble-body { white-space: pre-wrap; word-break: break-word; }
+.bubble-meta { font-size: .68rem; color: var(--ink-soft); text-align: right; margin-top: 3px; }
+.bubble-fail { color: var(--bad); }
+
+.thread-compose { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.thread-compose input { flex: 1; padding: 11px 14px; border: 1px solid var(--line); border-radius: 999px; outline: none; }
+.thread-compose input:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,131,106,.15); }
+
 /* ============================ Responsivo ============================ */
 @media (max-width: 860px) {
   .board-col { flex-basis: 200px; }
@@ -296,4 +339,8 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
   .form-grid { grid-template-columns: 1fr; }
   .detail-grid { grid-template-columns: 1fr 1fr; }
   .two-col { grid-template-columns: 1fr; }
+  .inbox { flex-direction: column; height: auto; }
+  .inbox-list { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--line); }
+  .inbox-thread { min-height: 60vh; }
+  .bubble { max-width: 88%; }
 }
