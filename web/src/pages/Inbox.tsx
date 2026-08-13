@@ -27,6 +27,7 @@ export default function Inbox() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState('');
   const [starting, setStarting] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
@@ -86,6 +87,17 @@ export default function Inbox() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao enviar.');
     } finally { setSending(false); }
+  }
+
+  async function suggest() {
+    if (!activeId) return;
+    setSuggesting(true); setError('');
+    try {
+      const data = await apiFetch<{ suggestion: string }>('/api/ai-suggest', { method: 'POST', body: JSON.stringify({ conversation_id: activeId }) });
+      setText(data.suggestion);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha na IA. Configure a chave da Anthropic no Netlify.');
+    } finally { setSuggesting(false); }
   }
 
   async function toggleAI() {
@@ -159,6 +171,9 @@ export default function Inbox() {
             {error && <div className="alert-error" style={{ margin: '0 16px' }}>{error}</div>}
 
             <form className="thread-compose" onSubmit={send}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={suggesting} title="Sugerir resposta com IA (você revisa antes de enviar)">
+                {suggesting ? '…' : '✨ IA'}
+              </button>
               <input placeholder="Escreva uma mensagem…" value={text} onChange={(e) => setText(e.target.value)} />
               <button className="btn btn-primary" disabled={sending || !text.trim()}>{sending ? '…' : 'Enviar'}</button>
             </form>

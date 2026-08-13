@@ -12,6 +12,7 @@ import Funil from './pages/Funil';
 import Inbox from './pages/Inbox';
 import Tarefas from './pages/Tarefas';
 import Conhecimento from './pages/Conhecimento';
+import ConfigIA from './pages/ConfigIA';
 import Expedicao from './pages/Expedicao';
 import NovoEnvio from './pages/NovoEnvio';
 import Shipments from './pages/Shipments';
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="funil" element={<Funil />} />
         <Route path="tarefas" element={<Tarefas />} />
         <Route path="conhecimento" element={<Conhecimento />} />
+        <Route path="config/ia" element={<ConfigIA />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="automacoes" element={<Placeholder title="Automações" phase="Fase 4" />} />
         <Route path="campanhas" element={<Placeholder title="Campanhas" phase="Fase 8" />} />

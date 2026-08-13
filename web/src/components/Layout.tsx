@@ -18,6 +18,7 @@ const NAV: NavItemDef[] = [
   { to: '/automacoes', label: 'Automações', icon: '🤖', perm: 'automations.read' },
   { to: '/campanhas', label: 'Campanhas', icon: '📣', perm: 'campaigns.write' },
   { to: '/conhecimento', label: 'Conhecimento', icon: '📚' },
+  { to: '/config/ia', label: 'Atendente IA', icon: '✨' },
   { to: '/config/frenet', label: 'Frenet', icon: '⚙️', perm: 'settings.read' },
   { to: '/config/logs', label: 'Logs', icon: '📋', perm: 'settings.read' },
 ];
