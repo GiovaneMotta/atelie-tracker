@@ -326,6 +326,19 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .thread-compose input { flex: 1; padding: 11px 14px; border: 1px solid var(--line); border-radius: 999px; outline: none; }
 .thread-compose input:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,131,106,.15); }
 
+/* ============================ Agenda / Radar ============================ */
+.agenda-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+.agenda-grid .card h3 { display: flex; align-items: center; gap: 8px; }
+.count-pill { background: var(--terracota); color: #fff; border-radius: 999px; font-size: .74rem; padding: 1px 9px; }
+.agenda-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.agenda-row:last-child { border-bottom: none; }
+.agenda-row:hover { background: var(--cream); }
+.agenda-right { text-align: right; }
+.tag-when { font-size: .74rem; background: #fbeae8; color: var(--bad); padding: 2px 8px; border-radius: 999px; }
+
+@media (max-width: 900px) { .agenda-grid { grid-template-columns: 1fr; } }
+
 /* ============================ Responsivo ============================ */
 @media (max-width: 860px) {
   .board-col { flex-basis: 200px; }

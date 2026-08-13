@@ -7,6 +7,7 @@ interface NavItemDef { to: string; label: string; icon: string; perm?: string; e
 
 const NAV: NavItemDef[] = [
   { to: '/', label: 'Dashboard', icon: '📊', end: true },
+  { to: '/agenda', label: 'Agenda', icon: '📅' },
   { to: '/expedicao', label: 'Expedição', icon: '📮', perm: 'shipments.read', end: true },
   { to: '/envios', label: 'Envios', icon: '🚚', perm: 'shipments.read' },
   { to: '/inbox', label: 'Inbox', icon: '💬', perm: 'conversations.read' },
