@@ -10,6 +10,7 @@ interface NavItemDef { to: string; label: string; icon: string; perm?: string; e
 const NAV: NavItemDef[] = [
   { to: '/', label: 'Dashboard', icon: '📊', end: true },
   { to: '/pedidos', label: 'Pedidos', icon: '📦', perm: 'orders.read' },
+  { to: '/producao', label: 'Produção', icon: '🏭', perm: 'production.read' },
   { to: '/expedicao', label: 'Expedição', icon: '📮', perm: 'shipments.read', end: true },
   { to: '/envios', label: 'Envios', icon: '🚚', perm: 'shipments.read' },
   { to: '/produtos', label: 'Produtos', icon: '🧸', perm: 'products.read' },

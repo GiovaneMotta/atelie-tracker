@@ -273,6 +273,22 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .lead-interest { font-size: .82rem; color: var(--ink-soft); margin-top: 4px; }
 .lead-value { margin-top: 6px; font-weight: 600; color: var(--terracota-dark); font-size: .85rem; }
 
+/* ============================ Produção ============================ */
+.sector-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; font-size: 14px; flex-shrink: 0; }
+.kanban-col-head .sector-ico + strong { flex: 1; }
+.prod-card { background: var(--white); border: 1px solid var(--line); border-left: 4px solid var(--terracota);
+  border-radius: var(--radius-sm); padding: 10px 12px; box-shadow: var(--shadow-sm); cursor: grab; }
+.prod-card:active { cursor: grabbing; }
+.prod-card > div:first-child { cursor: pointer; }
+.prod-card strong { display: block; font-size: .9rem; }
+.prod-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.prod-advance { width: 100%; margin-top: 8px; }
+.prod-actions { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.prod-history { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.prod-history h3 { font-size: 1rem; margin-bottom: 8px; }
+.hist-row { display: flex; flex-direction: column; gap: 1px; padding: 6px 0; border-bottom: 1px solid var(--cream-2); }
+.hist-act { font-weight: 600; text-transform: capitalize; font-size: .85rem; }
+
 /* ============================ Modal ============================ */
 .modal-scrim { position: fixed; inset: 0; background: rgba(50,40,35,.4); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .modal { background: var(--white); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 440px;

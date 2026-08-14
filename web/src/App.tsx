@@ -9,6 +9,7 @@ import Products from './pages/Products';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
 import Funil from './pages/Funil';
+import Producao from './pages/Producao';
 import Agenda from './pages/Agenda';
 import Inbox from './pages/Inbox';
 import Tarefas from './pages/Tarefas';
@@ -58,6 +59,7 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="agenda" element={<Agenda />} />
+        <Route path="producao" element={<Producao />} />
         <Route path="clientes" element={<Customers />} />
         <Route path="clientes/:id" element={<CustomerDetail />} />
         <Route path="produtos" element={<Products />} />
