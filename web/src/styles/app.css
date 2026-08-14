@@ -273,6 +273,33 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .lead-interest { font-size: .82rem; color: var(--ink-soft); margin-top: 4px; }
 .lead-value { margin-top: 6px; font-weight: 600; color: var(--terracota-dark); font-size: .85rem; }
 
+/* ============================ Calendário ============================ */
+.cal-nav { display: flex; align-items: center; gap: 12px; }
+.cal-month { font-family: var(--serif); font-size: 1.2rem; text-transform: capitalize; min-width: 160px; text-align: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-head-row { margin-bottom: 6px; }
+.cal-wd { text-align: center; font-size: .72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); font-weight: 600; padding: 4px; }
+.cal-cell { min-height: 92px; border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: var(--white);
+  display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.cal-cell.empty { background: transparent; border: none; }
+.cal-cell.today { border-color: var(--terracota); box-shadow: 0 0 0 1px var(--terracota); }
+.cal-cell.sel { background: var(--cream-2); }
+.cal-cell:not(.empty) { cursor: default; }
+.cal-day { font-size: .82rem; font-weight: 600; color: var(--ink-soft); }
+.cal-chip { font-size: .68rem; padding: 2px 6px; border-radius: 5px; background: var(--cream-2); color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border-left: 3px solid var(--ink-soft); }
+.cal-chip.prio-alta { border-left-color: var(--bad); background: #fbeae8; }
+.cal-chip.prio-normal { border-left-color: var(--terracota); }
+.cal-chip.prio-baixa { border-left-color: var(--ok); }
+.cal-chip.done { border-left-color: var(--ok); background: #e6f2ea; opacity: .8; }
+.cal-more { font-size: .68rem; color: var(--ink-soft); text-align: center; }
+
+@media (max-width: 700px) {
+  .cal-cell { min-height: 64px; }
+  .cal-chip { display: none; }
+  .cal-cell::after { content: attr(data-count); }
+}
+
 /* ============================ Produção ============================ */
 .sector-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; font-size: 14px; flex-shrink: 0; }
 .kanban-col-head .sector-ico + strong { flex: 1; }
