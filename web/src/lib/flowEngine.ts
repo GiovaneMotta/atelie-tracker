@@ -16,6 +16,7 @@ export const NODE_DEFS: Record<string, NodeDef> = {
   question:   { label: 'Pergunta / opções',   ico: '🔀', color: '#9B7BB8', group: 'Interação',   outputs: 'dynamic' },
   wait_input: { label: 'Aguardar resposta',   ico: '⌨️', color: '#5B8C6E', group: 'Interação',   outputs: ['out'] },
   condition:  { label: 'Condição (SE)',       ico: '❓', color: '#7BA7BC', group: 'Lógica',      outputs: ['yes', 'no'] },
+  random:     { label: 'Randômico (A/B)',     ico: '🎲', color: '#7BA7BC', group: 'Lógica',      outputs: 'dynamic' },
   delay:      { label: 'Esperar',             ico: '⏱️', color: '#E0A24E', group: 'Tempo',       outputs: ['out'] },
   action:     { label: 'Ação no CRM',         ico: '⚙️', color: '#C06B4E', group: 'CRM',         outputs: ['out'] },
   handoff:    { label: 'Transferir p/ humano', ico: '🙋', color: '#B5544B', group: 'Fluxo',      outputs: [] },
@@ -26,8 +27,18 @@ export function uid(p = 'n'): string { return p + Math.random().toString(36).sli
 
 export function nodeOutputs(node: FlowNode): string[] {
   if (node.type === 'question') return (node.data.options || []).map((o: any) => o.id);
+  if (node.type === 'random') return (node.data.branches || []).map((b: any) => b.id);
   const def = NODE_DEFS[node.type];
   return def && Array.isArray(def.outputs) ? def.outputs : ['out'];
+}
+
+/** Rótulo amigável de uma saída (handle) para a UI. */
+export function handleLabel(node: FlowNode, handle: string): string {
+  if (handle === 'yes') return 'Se SIM';
+  if (handle === 'no') return 'Se NÃO';
+  if (node.type === 'question') return (node.data.options || []).find((o: any) => o.id === handle)?.label || 'Opção';
+  if (node.type === 'random') return (node.data.branches || []).find((b: any) => b.id === handle)?.label || 'Caminho';
+  return 'Próximo';
 }
 
 /* Layout automático em camadas (profundidade = X, ramo = Y). */
@@ -46,7 +57,7 @@ export function layout(nodes: FlowNode[], edges: FlowEdge[], rootId: string) {
   });
 }
 
-export interface Effect { kind: string; text?: string; options?: { id: string; label: string }[]; data?: any; }
+export interface Effect { kind: string; text?: string; image?: string | null; options?: { id: string; label: string }[]; data?: any; }
 export interface RunResult { effects: Effect[]; status: string; }
 export interface EngineHooks { fill?: (t: string) => string; applyAction?: (d: any, ctx: any) => void; context?: any; }
 
@@ -68,8 +79,14 @@ export function createEngine(graph: Flow, hooks: EngineHooks = {}) {
       const node = byId(S.cursor); if (!node) { S.cursor = null; break; }
       const d = node.data || {};
       switch (node.type) {
-        case 'message': fx.push({ kind: 'message', text: fill(d.text) }); S.cursor = outTarget(node.id); break;
+        case 'message': fx.push({ kind: 'message', text: fill(d.text), image: d.imageUrl || null }); S.cursor = outTarget(node.id); break;
         case 'delay': fx.push({ kind: 'delay', data: d }); S.cursor = outTarget(node.id); break;
+        case 'random': {
+          const branches = d.branches || [];
+          const pick = branches.length ? branches[Math.floor(Math.random() * branches.length)] : null;
+          fx.push({ kind: 'debug', text: 'Randômico → ' + (pick ? pick.label : '—') });
+          S.cursor = pick ? outTarget(node.id, pick.id) : null; break;
+        }
         case 'action': if (hooks.applyAction) hooks.applyAction(d, S.context); fx.push({ kind: 'action', data: d }); S.cursor = outTarget(node.id); break;
         case 'condition': { const res = evalCondition(d, S.context); fx.push({ kind: 'debug', text: 'Condição → ' + (res ? 'SIM' : 'NÃO') }); S.cursor = outTarget(node.id, res ? 'yes' : 'no'); break; }
         case 'question': fx.push({ kind: 'ask', text: fill(d.text), options: (d.options || []).map((o: any) => ({ id: o.id, label: o.label })) }); S.pending = node; return { effects: fx, status: 'await_option' };

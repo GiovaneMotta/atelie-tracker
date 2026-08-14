@@ -363,12 +363,29 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
   background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 22px 22px; position: relative; }
 .flow-inner { position: relative; }
 .flow-edges { position: absolute; top: 0; left: 0; pointer-events: none; }
-.edge-path { fill: none; stroke: var(--terracota); stroke-width: 2; opacity: .55; }
+.edge-g { cursor: pointer; }
+.edge-hit { fill: none; stroke: transparent; stroke-width: 16; }
+.edge-path { fill: none; stroke: var(--terracota); stroke-width: 2; opacity: .6; }
+.edge-g:hover .edge-path { stroke: var(--bad); stroke-width: 3; opacity: 1; }
+.edge-temp { fill: none; stroke: var(--terracota-dark); stroke-width: 2; stroke-dasharray: 5 4; }
+
 .flow-node { position: absolute; background: var(--white); border: 2px solid var(--terracota-soft);
-  border-radius: 10px; box-shadow: var(--shadow-sm); cursor: grab; overflow: hidden; user-select: none; }
+  border-radius: 10px; box-shadow: var(--shadow-sm); cursor: grab; overflow: visible; user-select: none; }
 .flow-node.sel { box-shadow: 0 0 0 3px rgba(201,131,106,.35); }
-.flow-node-head { color: #fff; font-size: .78rem; font-weight: 600; padding: 5px 8px; }
-.flow-node-body { padding: 6px 8px; font-size: .78rem; color: var(--ink-soft); min-height: 22px; }
+.flow-node-head { height: 28px; display: flex; align-items: center; color: #fff; font-size: .78rem; font-weight: 600;
+  padding: 0 8px; border-radius: 8px 8px 0 0; white-space: nowrap; overflow: hidden; }
+.flow-node-preview { height: 18px; display: flex; align-items: center; padding: 0 8px; font-size: .72rem;
+  color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flow-node-outs { border-top: 1px solid var(--line); }
+.out-row { position: relative; height: 24px; display: flex; align-items: center; padding: 0 12px 0 8px;
+  font-size: .74rem; color: var(--ink-soft); border-bottom: 1px solid var(--cream-2); }
+.out-row:last-child { border-bottom: none; }
+.out-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.port { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--white);
+  border: 2px solid var(--terracota); z-index: 2; }
+.port-in { left: -7px; top: 23px; }
+.port-out { right: -7px; top: 50%; transform: translateY(-50%); cursor: crosshair; }
+.port-out:hover { background: var(--terracota); }
 
 .flow-config { width: 300px; flex-shrink: 0; background: var(--white); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 14px; overflow-y: auto; }
