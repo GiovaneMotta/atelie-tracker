@@ -273,6 +273,18 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .lead-interest { font-size: .82rem; color: var(--ink-soft); margin-top: 4px; }
 .lead-value { margin-top: 6px; font-weight: 600; color: var(--terracota-dark); font-size: .85rem; }
 
+/* ============================ Precificação ============================ */
+.badge.mg-ok { background: #e6f2ea; color: var(--ok); }
+.badge.mg-warn { background: #fdf3e3; color: var(--warn); }
+.badge.mg-bad { background: #fbeae8; color: var(--bad); }
+.mg-ok { color: var(--ok); }
+.mg-warn { color: var(--warn); }
+.mg-bad { color: var(--bad); }
+.price-summary { display: flex; flex-direction: column; gap: 6px; background: var(--cream); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin: 12px 0; }
+.price-summary > div { display: flex; justify-content: space-between; }
+.price-profit { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; font-size: 1.05rem; }
+
 /* ============================ Calendário ============================ */
 .cal-nav { display: flex; align-items: center; gap: 12px; }
 .cal-month { font-family: var(--serif); font-size: 1.2rem; text-transform: capitalize; min-width: 160px; text-align: center; }

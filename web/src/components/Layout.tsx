@@ -15,6 +15,7 @@ const NAV: NavItemDef[] = [
   { to: '/envios', label: 'Envios', icon: '🚚', perm: 'shipments.read' },
   { to: '/calendario', label: 'Calendário', icon: '🗓️', perm: 'production.read' },
   { to: '/produtos', label: 'Produtos', icon: '🧸', perm: 'products.read' },
+  { to: '/precificacao', label: 'Precificação', icon: '💰', perm: 'products.read' },
   { to: '/clientes', label: 'Clientes', icon: '👥', perm: 'customers.read' },
   { to: '/tarefas', label: 'Tarefas', icon: '✅' },
   { to: '/config/frenet', label: 'Frenet', icon: '⚙️', perm: 'settings.read' },
