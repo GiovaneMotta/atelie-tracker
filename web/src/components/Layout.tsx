@@ -5,25 +5,32 @@ import { apiFetch } from '../lib/api';
 
 interface NavItemDef { to: string; label: string; icon: string; perm?: string; end?: boolean; }
 
+// ===== FOCO ATUAL: operação / logística (catálogo, pedidos, expedição) =====
+// O atendimento no WhatsApp fica no TResCRM; aqui focamos no que ele não faz.
 const NAV: NavItemDef[] = [
   { to: '/', label: 'Dashboard', icon: '📊', end: true },
-  { to: '/agenda', label: 'Agenda', icon: '📅' },
+  { to: '/pedidos', label: 'Pedidos', icon: '📦', perm: 'orders.read' },
   { to: '/expedicao', label: 'Expedição', icon: '📮', perm: 'shipments.read', end: true },
   { to: '/envios', label: 'Envios', icon: '🚚', perm: 'shipments.read' },
-  { to: '/inbox', label: 'Inbox', icon: '💬', perm: 'conversations.read' },
-  { to: '/funil', label: 'Funil', icon: '🗂️' },
-  { to: '/clientes', label: 'Clientes', icon: '👥', perm: 'customers.read' },
   { to: '/produtos', label: 'Produtos', icon: '🧸', perm: 'products.read' },
-  { to: '/pedidos', label: 'Pedidos', icon: '📦', perm: 'orders.read' },
+  { to: '/clientes', label: 'Clientes', icon: '👥', perm: 'customers.read' },
   { to: '/tarefas', label: 'Tarefas', icon: '✅' },
-  { to: '/automacoes', label: 'Automações', icon: '🤖', perm: 'automations.read' },
-  { to: '/campanhas', label: 'Campanhas', icon: '📣', perm: 'campaigns.write' },
-  { to: '/conhecimento', label: 'Conhecimento', icon: '📚' },
-  { to: '/config/ia', label: 'Atendente IA', icon: '✨' },
-  { to: '/config/whatsapp', label: 'WhatsApp', icon: '📲' },
   { to: '/config/frenet', label: 'Frenet', icon: '⚙️', perm: 'settings.read' },
   { to: '/config/logs', label: 'Logs', icon: '📋', perm: 'settings.read' },
 ];
+
+// ===== ESCONDIDOS (não deletados) — módulos de atendimento/marketing no
+// WhatsApp. As páginas e rotas continuam existindo; basta mover de volta
+// para NAV quando quisermos reativá-los (ex.: com um número dedicado).
+// { to: '/agenda',           label: 'Agenda',        icon: '📅' },
+// { to: '/inbox',            label: 'Inbox',         icon: '💬', perm: 'conversations.read' },
+// { to: '/funil',            label: 'Funil',         icon: '🗂️' },
+// { to: '/automacoes',       label: 'Automações',    icon: '🤖', perm: 'automations.read' },
+// { to: '/campanhas',        label: 'Campanhas',     icon: '📣', perm: 'campaigns.write' },
+// { to: '/conhecimento',     label: 'Conhecimento',  icon: '📚' },
+// { to: '/config/ia',        label: 'Atendente IA',  icon: '✨' },
+// { to: '/config/whatsapp',  label: 'WhatsApp',      icon: '📲' },
+// ==========================================================================
 
 export default function Layout() {
   const { me, signOut, can } = useAuth();
