@@ -5,3 +5,8 @@ name = "ateliedalili-painel"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "web/dist"
+
+# Variáveis de runtime (não-secretas) das Functions.
+# A service_role (secreta) é cadastrada como Secret na dashboard do Cloudflare.
+[vars]
+SUPABASE_URL = "https://cfwyrzvnodaqgfutbcph.supabase.co"
