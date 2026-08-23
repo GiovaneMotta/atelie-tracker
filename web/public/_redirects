@@ -1,0 +1,3 @@
+# SPA: qualquer rota que não seja arquivo estático nem /api/* cai no index.html
+# (as Functions em /api/* têm precedência sobre este redirect)
+/*    /index.html   200

@@ -1,0 +1,7 @@
+# Cloudflare Pages — Painel Administrativo (Ateliê da Lili)
+# Frontend React (web/dist) + Functions (functions/api/*) que reaproveitam
+# os handlers em netlify/functions/* via o adaptador.
+name = "ateliedalili-painel"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "web/dist"
