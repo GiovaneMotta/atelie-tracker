@@ -18,7 +18,7 @@ const NESTED = 'product_categories(category), product_variants(*), product_addon
 
 const PRODUCT_FIELDS = ['sku', 'name', 'slug', 'category', 'description', 'price_cash',
   'price_card', 'installments_max', 'original_price', 'weight_kg', 'length_cm', 'width_cm',
-  'height_cm', 'status', 'images', 'videos'] as const;
+  'height_cm', 'status', 'featured', 'images', 'videos'] as const;
 
 function pickProduct(body: Record<string, unknown>) {
   const out: Record<string, unknown> = {};

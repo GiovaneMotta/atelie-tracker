@@ -9,7 +9,7 @@ interface Product {
   id: string; sku: string | null; name: string; description: string | null;
   price_cash: number | null; price_card: number | null; status: string;
   weight_kg: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null;
-  images: string[]; product_categories?: { category: string }[];
+  featured?: boolean; images: string[]; product_categories?: { category: string }[];
   product_variants?: Variant[]; product_addons?: Addon[];
 }
 
@@ -86,6 +86,7 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
     description: product?.description || '',
   });
   const [images, setImages] = useState<string[]>(product?.images || []);
+  const [featured, setFeatured] = useState<boolean>(!!product?.featured);
   const [categories, setCategories] = useState<string[]>((product?.product_categories || []).map((c) => c.category));
   const [variants, setVariants] = useState<Variant[]>(product?.product_variants || []);
   const [addons, setAddons] = useState<Addon[]>(product?.product_addons || []);
@@ -109,6 +110,7 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
       width_cm: f.width_cm ? parseBRL(f.width_cm) : null,
       height_cm: f.height_cm ? parseBRL(f.height_cm) : null,
       description: f.description || null,
+      featured,
       images,
       categories,
       variants: variants.map((v) => ({ ...v, price_delta: parseBRL(v.price_delta) })),
@@ -121,90 +123,122 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao salvar.'); } finally { setBusy(false); }
   }
 
+  const statusLabel = ({ ativo: 'Ativo', inativo: 'Inativo', esgotado: 'Esgotado', oculto: 'Oculto' } as Record<string, string>)[f.status] || f.status;
+  const statusPill = f.status === 'ativo' ? 'pill pill-ok' : f.status === 'esgotado' ? 'pill pill-warn' : 'pill';
+
   return (
     <div className="page">
-      <div className="page-head">
-        <div><p className="crumb"><button className="btn-link" onClick={onCancel}>← Produtos</button></p>
-          <h1>{product ? 'Editar produto' : 'Novo produto'}</h1></div>
-      </div>
       <form onSubmit={submit}>
-        <div className="card form-grid">
-          <label className="field span-all"><span>Nome *</span><input value={f.name} onChange={(e) => set('name', e.target.value)} required /></label>
-          <label className="field"><span>SKU</span><input value={f.sku} onChange={(e) => set('sku', e.target.value)} /></label>
-          <label className="field"><span>Status</span>
-            <select value={f.status} onChange={(e) => set('status', e.target.value)}>
-              <option value="ativo">Ativo</option><option value="inativo">Inativo</option>
-              <option value="esgotado">Esgotado</option><option value="oculto">Oculto</option>
-            </select></label>
-          <label className="field"><span>Preço à vista (R$)</span><input value={f.price_cash} onChange={(e) => set('price_cash', e.target.value)} placeholder="349,00" /></label>
-          <label className="field"><span>Preço no cartão (R$)</span><input value={f.price_card} onChange={(e) => set('price_card', e.target.value)} placeholder="369,00" /></label>
-          <label className="field span-all"><span>Descrição</span>
-            <textarea rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} /></label>
-        </div>
-
-        <div className="card">
-          <h3>Imagens</h3>
-          <p className="muted small">A 1ª imagem é a <strong>principal</strong> (capa no site). Arraste para enviar; as fotos são otimizadas (WebP) automaticamente antes do upload.</p>
-          <ImageManager productId={product?.id} images={images} setImages={setImages} />
-        </div>
-
-        <div className="card">
-          <h3>Frete — peso e dimensões</h3>
-          <p className="muted small">Usados na cotação Frenet. O cliente nunca precisa informar.</p>
-          <div className="form-grid">
-            <label className="field"><span>Peso (kg)</span><input value={f.weight_kg} onChange={(e) => set('weight_kg', e.target.value)} placeholder="0,5" /></label>
-            <label className="field"><span>Comprimento (cm)</span><input value={f.length_cm} onChange={(e) => set('length_cm', e.target.value)} /></label>
-            <label className="field"><span>Largura (cm)</span><input value={f.width_cm} onChange={(e) => set('width_cm', e.target.value)} /></label>
-            <label className="field"><span>Altura (cm)</span><input value={f.height_cm} onChange={(e) => set('height_cm', e.target.value)} /></label>
+        <div className="page-head">
+          <div>
+            <p className="crumb"><button type="button" className="btn-link" onClick={onCancel}>← Produtos</button></p>
+            <h1 style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {product ? 'Editar produto' : 'Novo produto'}
+              {product && <span className={statusPill}>{statusLabel}</span>}
+            </h1>
           </div>
-        </div>
-
-        <div className="card">
-          <h3>Categorias</h3>
-          <div className="chips">
-            {CATEGORIES.map((c) => (
-              <button type="button" key={c} className={`chip ${categories.includes(c) ? 'chip-on' : ''}`} onClick={() => toggleCat(c)}>{c}</button>
-            ))}
+          <div className="page-actions">
+            <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+            <button className="btn btn-primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar alterações'}</button>
           </div>
-        </div>
-
-        <div className="card">
-          <h3>Variações</h3>
-          {variants.map((v, i) => (
-            <div className="row-inline" key={i}>
-              <input placeholder="Tamanho" value={v.size} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, size: e.target.value } : x))} />
-              <input placeholder="Cor" value={v.color} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, color: e.target.value } : x))} />
-              <select value={v.gender} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, gender: e.target.value } : x))}>
-                <option value="">—</option><option value="menina">menina</option><option value="menino">menino</option><option value="unissex">unissex</option>
-              </select>
-              <input placeholder="+/- R$" value={v.price_delta} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, price_delta: e.target.value } : x))} />
-              <button type="button" className="btn-link" onClick={() => setVariants((cur) => cur.filter((_, j) => j !== i))}>✕</button>
-            </div>
-          ))}
-          <button type="button" className="btn btn-ghost" onClick={() => setVariants((cur) => [...cur, { size: '', color: '', gender: '', price_delta: 0 }])}>+ Variação</button>
-        </div>
-
-        <div className="card">
-          <h3>Adicionais / personalizações</h3>
-          <p className="muted small">Ex.: "Bordar nome" — R$ 19,90.</p>
-          {addons.map((a, i) => (
-            <div className="row-inline" key={i}>
-              <input placeholder="Nome do adicional" value={a.name} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
-              <input placeholder="R$" value={a.price} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, price: e.target.value } : x))} />
-              <label className="field-check">
-                <input type="checkbox" checked={a.requires_text} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, requires_text: e.target.checked } : x))} />
-                <span>pede texto</span>
-              </label>
-              <button type="button" className="btn-link" onClick={() => setAddons((cur) => cur.filter((_, j) => j !== i))}>✕</button>
-            </div>
-          ))}
-          <button type="button" className="btn btn-ghost" onClick={() => setAddons((cur) => [...cur, { name: '', price: 0, requires_text: false }])}>+ Adicional</button>
         </div>
 
         {error && <div className="alert-error">{error}</div>}
-        <div className="form-actions">
-          <button className="btn btn-primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar produto'}</button>
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+
+        <div className="two-col">
+          {/* Coluna principal */}
+          <div>
+            <div className="card">
+              <h3>Informações principais</h3>
+              <div className="form-grid">
+                <label className="field span-all"><span>Nome do produto *</span><input value={f.name} onChange={(e) => set('name', e.target.value)} required /></label>
+                <label className="field"><span>SKU</span><input value={f.sku} onChange={(e) => set('sku', e.target.value)} placeholder="SM-G000" /></label>
+                <label className="field"><span>Preço à vista (R$)</span><input value={f.price_cash} onChange={(e) => set('price_cash', e.target.value)} placeholder="349,00" /></label>
+                <label className="field"><span>Preço no cartão (R$)</span><input value={f.price_card} onChange={(e) => set('price_card', e.target.value)} placeholder="369,00" /></label>
+                <label className="field span-all"><span>Descrição</span>
+                  <textarea rows={4} value={f.description} onChange={(e) => set('description', e.target.value)} placeholder="Conte os detalhes da peça: tecido, bordado, acabamento…" /></label>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3>Status e visibilidade</h3>
+              <div className="form-grid">
+                <label className="field"><span>Status</span>
+                  <select value={f.status} onChange={(e) => set('status', e.target.value)}>
+                    <option value="ativo">Ativo</option><option value="inativo">Inativo</option>
+                    <option value="esgotado">Esgotado</option><option value="oculto">Oculto</option>
+                  </select>
+                </label>
+              </div>
+              <label className="switch" style={{ marginTop: 2 }}>
+                <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} />
+                <span className="track" /><span className="switch-label">Produto em destaque (vitrine “Favoritas” da home)</span>
+              </label>
+              <p className="muted small" style={{ marginTop: 12 }}>Use <strong>Oculto</strong> para tirar do site sem apagar o produto.</p>
+            </div>
+
+            <div className="card">
+              <h3>Categorias</h3>
+              <div className="chips">
+                {CATEGORIES.map((c) => (
+                  <button type="button" key={c} className={`chip ${categories.includes(c) ? 'chip-on' : ''}`} onClick={() => toggleCat(c)}>{c}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <h3>Frete — peso e dimensões</h3>
+              <p className="muted small">Usados na cotação Frenet. O cliente nunca precisa informar.</p>
+              <div className="form-grid">
+                <label className="field"><span>Peso (kg)</span><input value={f.weight_kg} onChange={(e) => set('weight_kg', e.target.value)} placeholder="0,5" /></label>
+                <label className="field"><span>Comprimento (cm)</span><input value={f.length_cm} onChange={(e) => set('length_cm', e.target.value)} /></label>
+                <label className="field"><span>Largura (cm)</span><input value={f.width_cm} onChange={(e) => set('width_cm', e.target.value)} /></label>
+                <label className="field"><span>Altura (cm)</span><input value={f.height_cm} onChange={(e) => set('height_cm', e.target.value)} /></label>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3>Variações</h3>
+              {variants.map((v, i) => (
+                <div className="row-inline" key={i}>
+                  <input placeholder="Tamanho" value={v.size} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, size: e.target.value } : x))} />
+                  <input placeholder="Cor" value={v.color} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, color: e.target.value } : x))} />
+                  <select value={v.gender} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, gender: e.target.value } : x))}>
+                    <option value="">—</option><option value="menina">menina</option><option value="menino">menino</option><option value="unissex">unissex</option>
+                  </select>
+                  <input placeholder="+/- R$" value={v.price_delta} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, price_delta: e.target.value } : x))} />
+                  <button type="button" className="btn-link" onClick={() => setVariants((cur) => cur.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-ghost" onClick={() => setVariants((cur) => [...cur, { size: '', color: '', gender: '', price_delta: 0 }])}>+ Variação</button>
+            </div>
+
+            <div className="card">
+              <h3>Adicionais / personalizações</h3>
+              <p className="muted small">Ex.: "Bordar nome" — R$ 19,90.</p>
+              {addons.map((a, i) => (
+                <div className="row-inline" key={i}>
+                  <input placeholder="Nome do adicional" value={a.name} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                  <input placeholder="R$" value={a.price} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, price: e.target.value } : x))} />
+                  <label className="field-check">
+                    <input type="checkbox" checked={a.requires_text} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, requires_text: e.target.checked } : x))} />
+                    <span>pede texto</span>
+                  </label>
+                  <button type="button" className="btn-link" onClick={() => setAddons((cur) => cur.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-ghost" onClick={() => setAddons((cur) => [...cur, { name: '', price: 0, requires_text: false }])}>+ Adicional</button>
+            </div>
+          </div>
+
+          {/* Coluna lateral — imagens */}
+          <div>
+            <div className="card" style={{ position: 'sticky', top: 78 }}>
+              <h3>Imagens do produto</h3>
+              <p className="muted small">A 1ª imagem é a <strong>principal</strong> (capa no site). Arraste para enviar — as fotos são otimizadas (WebP) automaticamente.</p>
+              <ImageManager productId={product?.id} images={images} setImages={setImages} />
+            </div>
+          </div>
         </div>
       </form>
     </div>
