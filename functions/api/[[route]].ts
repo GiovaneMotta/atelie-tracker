@@ -33,6 +33,7 @@ import { handler as orders } from '../../netlify/functions/orders';
 import { handler as parseRecipient } from '../../netlify/functions/parse-recipient';
 import { handler as pricing } from '../../netlify/functions/pricing';
 import { handler as production } from '../../netlify/functions/production';
+import { handler as productImage } from '../../netlify/functions/product-image';
 import { handler as products } from '../../netlify/functions/products';
 import { handler as shipmentCancel } from '../../netlify/functions/shipment-cancel';
 import { handler as shipmentLabel } from '../../netlify/functions/shipment-label';
@@ -50,7 +51,8 @@ const HANDLERS: Record<string, (event: any, ctx: any) => Promise<any>> = {
   'customers': customers, 'finance': finance, 'frenet-env': frenetEnv, 'frenet-settings': frenetSettings,
   'frenet-test': frenetTest, 'health': health, 'integration-logs': integrationLogs, 'knowledge': knowledge,
   'leads': leads, 'materials': materials, 'me': me, 'messages': messages, 'orders': orders,
-  'parse-recipient': parseRecipient, 'pricing': pricing, 'production': production, 'products': products,
+  'parse-recipient': parseRecipient, 'pricing': pricing, 'production': production,
+  'product-image': productImage, 'products': products,
   'shipment-cancel': shipmentCancel, 'shipment-label': shipmentLabel, 'shipment-tracking': shipmentTracking,
   'shipments': shipments, 'shipping-quote': shippingQuote, 'shipping-stats': shippingStats, 'staff': staff,
   'tasks': tasks, 'wascript-test': wascriptTest,
