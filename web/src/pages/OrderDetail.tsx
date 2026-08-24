@@ -2,21 +2,38 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { formatBRL, formatDate, ORDER_STATUS, NEXT_STATUS } from '../lib/format';
+import { formatBRL, formatDate, formatDateTime, ORDER_STATUS, NEXT_STATUS } from '../lib/format';
 
 interface Item { id: string; name: string; sku: string | null; quantity: number; unit_price: number; line_total: number; addons: { name: string; price: number }[]; }
 interface Address { street: string | null; number: string | null; district: string | null; city: string | null; state: string | null; cep: string | null; }
+interface Utm { source?: string | null; medium?: string | null; campaign?: string | null; content?: string | null; term?: string | null; }
 interface Order {
   id: string; number: number; status: string; payment_status: string; payment_method: string | null;
   subtotal: number; discount: number; shipping_cost: number; total: number; notes: string | null; created_at: string;
-  customer: { id: string; name: string; whatsapp: string | null; document: string | null } | null;
+  channel: string | null; utm: Utm | null;
+  customer: { id: string; name: string; whatsapp: string | null; phone?: string | null; document: string | null } | null;
   address: Address | null; items: Item[];
+}
+interface HistoryRow { action: string; reason: string | null; old_value: any; new_value: any; created_at: string; actor: { name: string } | null; }
+
+const CHANNEL_LABEL: Record<string, string> = {
+  site: 'Site', catalogo: 'Site', whatsapp: 'WhatsApp', inbox: 'WhatsApp', manual: 'Manual',
+};
+
+function historyLabel(h: HistoryRow): string {
+  if (h.action === 'create') return 'Pedido criado' + (h.new_value?.source === 'site' ? ' pelo site' : '');
+  if (h.reason === 'Mudança de status' || h.new_value?.status) {
+    const s = h.new_value?.status;
+    return 'Status: ' + (s ? (ORDER_STATUS[s] || s) : '—');
+  }
+  return h.reason || h.action;
 }
 
 export default function OrderDetail() {
   const { id } = useParams();
   const { can } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
@@ -24,8 +41,9 @@ export default function OrderDetail() {
   async function load() {
     setLoading(true);
     try {
-      const data = await apiFetch<{ order: Order }>(`/api/orders?id=${id}`);
+      const data = await apiFetch<{ order: Order; history: HistoryRow[] }>(`/api/orders?id=${id}`);
       setOrder(data.order);
+      setHistory(data.history || []);
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro.'); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, [id]);
@@ -84,6 +102,23 @@ export default function OrderDetail() {
             </div>
           </div>
           {order.notes && <div className="card"><h3>Observações</h3><p>{order.notes}</p></div>}
+
+          {history.length > 0 && (
+            <div className="card">
+              <h3>Histórico</h3>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {history.map((h, i) => (
+                  <li key={i} style={{ display: 'flex', gap: 10, padding: '8px 0', borderTop: i ? '1px solid #eef0f3' : 'none' }}>
+                    <span style={{ marginTop: 5, width: 8, height: 8, borderRadius: 999, background: '#c9836a', flex: '0 0 auto' }} />
+                    <div>
+                      <div>{historyLabel(h)}{h.actor?.name ? <span className="muted small"> · {h.actor.name}</span> : null}</div>
+                      <div className="muted small">{formatDateTime(h.created_at)}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div>
@@ -103,6 +138,20 @@ export default function OrderDetail() {
           <div className="card">
             <h3>Pagamento</h3>
             <p><span className="badge">{order.payment_status}</span> {order.payment_method || ''}</p>
+          </div>
+
+          <div className="card">
+            <h3>Origem</h3>
+            <p><span className="badge">{order.channel ? (CHANNEL_LABEL[order.channel] || order.channel) : '—'}</span></p>
+            {order.utm && (order.utm.source || order.utm.medium || order.utm.campaign || order.utm.content || order.utm.term) && (
+              <ul className="muted small" style={{ margin: '8px 0 0', paddingLeft: 16 }}>
+                {order.utm.source && <li>Origem: {order.utm.source}</li>}
+                {order.utm.medium && <li>Mídia: {order.utm.medium}</li>}
+                {order.utm.campaign && <li>Campanha: {order.utm.campaign}</li>}
+                {order.utm.content && <li>Conteúdo: {order.utm.content}</li>}
+                {order.utm.term && <li>Termo: {order.utm.term}</li>}
+              </ul>
+            )}
           </div>
 
           {can('orders.write') && nexts.length > 0 && (

@@ -70,7 +70,12 @@ export const handler: Handler = withHttp(async (event) => {
       const { data, error } = await sb.from('orders').select(DETAIL).eq('id', id).maybeSingle();
       if (error) throw badRequest(error.message);
       if (!data) throw notFound('Pedido não encontrado.');
-      return json(event, 200, { order: data });
+      // Histórico/timeline do pedido (auditoria): criação + mudanças de status.
+      const { data: history } = await sb.from('audit_logs')
+        .select('action, reason, old_value, new_value, created_at, actor:staff(name)')
+        .eq('entity', 'order').eq('entity_id', id)
+        .order('created_at', { ascending: true });
+      return json(event, 200, { order: data, history: history ?? [] });
     }
     const status = event.queryStringParameters?.status;
     let q = sb.from('orders').select('*, customer:customers(name)').order('created_at', { ascending: false }).limit(200);

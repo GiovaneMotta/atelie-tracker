@@ -4,7 +4,12 @@ import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { formatBRL, formatDate, ORDER_STATUS } from '../lib/format';
 
-interface OrderRow { id: string; number: number; total: number; status: string; created_at: string; customer: { name: string } | null; }
+interface OrderRow { id: string; number: number; total: number; status: string; channel: string | null; created_at: string; customer: { name: string } | null; }
+
+const CHANNEL_LABEL: Record<string, string> = {
+  site: 'Site', catalogo: 'Site', whatsapp: 'WhatsApp', inbox: 'WhatsApp', manual: 'Manual',
+};
+const channelLabel = (c: string | null) => (c ? (CHANNEL_LABEL[c] || c) : '—');
 
 export default function Orders() {
   const { can } = useAuth();
@@ -34,14 +39,15 @@ export default function Orders() {
       {error && <div className="alert-error">{error}</div>}
       <div className="card table-card">
         <table className="table">
-          <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
+          <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Origem</th><th>Status</th><th>Data</th></tr></thead>
           <tbody>
-            {!loading && list.length === 0 && <tr><td colSpan={5} className="muted center">Nenhum pedido ainda.</td></tr>}
+            {!loading && list.length === 0 && <tr><td colSpan={6} className="muted center">Nenhum pedido ainda.</td></tr>}
             {list.map((o) => (
               <tr key={o.id} className="row-link" onClick={() => navigate(`/pedidos/${o.id}`)}>
                 <td className="mono">#{o.number}</td>
                 <td>{o.customer?.name || '—'}</td>
                 <td>{formatBRL(o.total)}</td>
+                <td><span className="badge">{channelLabel(o.channel)}</span></td>
                 <td><span className="badge">{ORDER_STATUS[o.status] || o.status}</span></td>
                 <td>{formatDate(o.created_at)}</td>
               </tr>
