@@ -18,6 +18,7 @@ import { handler as calendar } from '../../netlify/functions/calendar';
 import { handler as cep } from '../../netlify/functions/cep';
 import { handler as conversations } from '../../netlify/functions/conversations';
 import { handler as customers } from '../../netlify/functions/customers';
+import { handler as dashboard } from '../../netlify/functions/dashboard';
 import { handler as finance } from '../../netlify/functions/finance';
 import { handler as frenetEnv } from '../../netlify/functions/frenet-env';
 import { handler as frenetSettings } from '../../netlify/functions/frenet-settings';
@@ -48,7 +49,7 @@ import { handler as wascriptTest } from '../../netlify/functions/wascript-test';
 const HANDLERS: Record<string, (event: any, ctx: any) => Promise<any>> = {
   'addresses': addresses, 'agenda': agenda, 'ai-settings': aiSettings, 'ai-suggest': aiSuggest,
   'automations': automations, 'calendar': calendar, 'cep': cep, 'conversations': conversations,
-  'customers': customers, 'finance': finance, 'frenet-env': frenetEnv, 'frenet-settings': frenetSettings,
+  'customers': customers, 'dashboard': dashboard, 'finance': finance, 'frenet-env': frenetEnv, 'frenet-settings': frenetSettings,
   'frenet-test': frenetTest, 'health': health, 'integration-logs': integrationLogs, 'knowledge': knowledge,
   'leads': leads, 'materials': materials, 'me': me, 'messages': messages, 'orders': orders,
   'parse-recipient': parseRecipient, 'pricing': pricing, 'production': production,
