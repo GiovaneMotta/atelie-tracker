@@ -43,6 +43,7 @@ import { handler as shipmentTracking } from '../../netlify/functions/shipment-tr
 import { handler as shipments } from '../../netlify/functions/shipments';
 import { handler as shippingQuote } from '../../netlify/functions/shipping-quote';
 import { handler as shippingStats } from '../../netlify/functions/shipping-stats';
+import { handler as siteSettings } from '../../netlify/functions/site-settings';
 import { handler as staff } from '../../netlify/functions/staff';
 import { handler as tasks } from '../../netlify/functions/tasks';
 import { handler as wascriptTest } from '../../netlify/functions/wascript-test';
@@ -56,7 +57,8 @@ const HANDLERS: Record<string, (event: any, ctx: any) => Promise<any>> = {
   'parse-recipient': parseRecipient, 'pricing': pricing, 'production': production,
   'product-image': productImage, 'products': products,
   'shipment-cancel': shipmentCancel, 'shipment-label': shipmentLabel, 'shipment-tracking': shipmentTracking,
-  'shipments': shipments, 'shipping-quote': shippingQuote, 'shipping-stats': shippingStats, 'staff': staff,
+  'shipments': shipments, 'shipping-quote': shippingQuote, 'shipping-stats': shippingStats,
+  'site-settings': siteSettings, 'staff': staff,
   'tasks': tasks, 'wascript-test': wascriptTest,
 };
 
