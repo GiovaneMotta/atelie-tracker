@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
+import { formatBRL, formatDate } from '../lib/format';
 
 interface Customer {
   id: string;
@@ -12,6 +14,9 @@ interface Customer {
   document: string | null;
   status: string;
   origin: string | null;
+  orders_count?: number;
+  total_spent?: number;
+  last_order?: string | null;
 }
 
 export default function Customers() {
@@ -52,7 +57,7 @@ export default function Customers() {
         </div>
         <div className="page-actions">
           <form className="search" onSubmit={onSearch}>
-            <span>🔎</span>
+            <Search size={15} style={{ color: 'var(--ink-faint)' }} />
             <input
               placeholder="Buscar por nome, telefone, e-mail…"
               value={search}
@@ -77,7 +82,7 @@ export default function Customers() {
         <table className="table">
           <thead>
             <tr>
-              <th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>CPF/CNPJ</th><th>Origem</th><th>Status</th>
+              <th>Nome</th><th>Contato</th><th className="right">Pedidos</th><th className="right">Total gasto</th><th>Última compra</th><th>Origem</th>
             </tr>
           </thead>
           <tbody>
@@ -86,12 +91,12 @@ export default function Customers() {
             )}
             {list.map((c) => (
               <tr key={c.id} className="row-link" onClick={() => navigate(`/clientes/${c.id}`)}>
-                <td><strong>{c.name}</strong></td>
-                <td>{c.whatsapp || c.phone || '—'}</td>
-                <td>{c.email || '—'}</td>
-                <td className="mono">{c.document || '—'}</td>
-                <td>{c.origin || '—'}</td>
-                <td><span className="badge">{c.status}</span></td>
+                <td><strong>{c.name}</strong>{c.email ? <div className="muted small">{c.email}</div> : null}</td>
+                <td className="mono">{c.whatsapp || c.phone || '—'}</td>
+                <td className="right mono">{c.orders_count ?? 0}</td>
+                <td className="right mono">{formatBRL(c.total_spent ?? 0)}</td>
+                <td className="mono">{c.last_order ? formatDate(c.last_order) : '—'}</td>
+                <td>{c.origin ? <span className="badge">{c.origin}</span> : '—'}</td>
               </tr>
             ))}
           </tbody>

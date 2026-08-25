@@ -58,7 +58,14 @@ export const handler: Handler = withHttp(async (event) => {
       if (!data) throw notFound('Cliente não encontrado.');
       const { data: addresses } = await sb
         .from('customer_addresses').select('*').eq('customer_id', id).order('is_default', { ascending: false });
-      return json(event, 200, { customer: shapeCustomer(data, ctx), addresses: addresses ?? [] });
+      let orders: any[] = [];
+      if (ctx.has('orders.read')) {
+        const { data: o } = await sb.from('orders')
+          .select('id, number, total, status, payment_status, created_at, channel')
+          .eq('customer_id', id).order('created_at', { ascending: false }).limit(100);
+        orders = o ?? [];
+      }
+      return json(event, 200, { customer: shapeCustomer(data, ctx), addresses: addresses ?? [], orders });
     }
 
     // Remove vírgulas/parênteses: o filtro .or() do PostgREST usa vírgula como separador.
@@ -73,7 +80,28 @@ export const handler: Handler = withHttp(async (event) => {
     }
     const { data, error } = await q;
     if (error) throw badRequest(error.message);
-    return json(event, 200, { customers: (data ?? []).map((r) => shapeCustomer(r, ctx)) });
+    let rows = (data ?? []).map((r) => shapeCustomer(r, ctx));
+
+    // Métricas reais (pedidos, total gasto, última compra) agregadas de orders.
+    if (ctx.has('orders.read') && rows.length) {
+      const ids = rows.map((r: any) => r.id);
+      const { data: ords } = await sb.from('orders')
+        .select('customer_id, total, status, payment_status, created_at').in('customer_id', ids).limit(5000);
+      const agg = new Map<string, { n: number; spent: number; last: string | null }>();
+      for (const o of ords ?? []) {
+        if (!o.customer_id) continue;
+        const a = agg.get(o.customer_id) || { n: 0, spent: 0, last: null };
+        if (o.status !== 'cancelado') a.n++;
+        if (o.payment_status === 'pago' && o.status !== 'cancelado') a.spent += Number(o.total) || 0;
+        if (!a.last || o.created_at > a.last) a.last = o.created_at;
+        agg.set(o.customer_id, a);
+      }
+      rows = rows.map((r: any) => {
+        const a = agg.get(r.id);
+        return { ...r, orders_count: a ? a.n : 0, total_spent: a ? Math.round(a.spent * 100) / 100 : 0, last_order: a ? a.last : null };
+      });
+    }
+    return json(event, 200, { customers: rows });
   }
 
   // ---- CRIAÇÃO ----

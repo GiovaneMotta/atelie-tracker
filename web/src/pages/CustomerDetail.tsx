@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
+import { formatBRL, formatDate, ORDER_STATUS } from '../lib/format';
 
 interface Address {
   id: string; label: string | null; recipient: string | null; cep: string | null;
@@ -13,13 +14,23 @@ interface Customer {
   id: string; name: string; phone: string | null; whatsapp: string | null; email: string | null;
   document: string | null; origin: string | null; status: string; notes_summary: string | null;
   do_not_contact: boolean; total_spent: number; orders_count: number;
+  utm?: { source?: string | null; medium?: string | null; campaign?: string | null } | null;
 }
+interface Order { id: string; number: number; total: number; status: string; payment_status: string; created_at: string; channel: string | null; }
+
+const ORDER_TONE: Record<string, string> = {
+  pago: 'pill-ok', entregue: 'pill-ok', pos_venda: 'pill-ok',
+  aguardando_etiqueta: 'pill-warn', etiqueta_gerada: 'pill-info', postado: 'pill-info', em_transito: 'pill-info', saiu_entrega: 'pill-info',
+  problema: 'pill-bad', cancelado: 'pill-bad',
+};
 
 export default function CustomerDetail() {
   const { id } = useParams();
   const { can } = useAuth();
+  const navigate = useNavigate();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
@@ -29,9 +40,10 @@ export default function CustomerDetail() {
   async function load() {
     setLoading(true);
     try {
-      const data = await apiFetch<{ customer: Customer; addresses: Address[] }>(`/api/customers?id=${id}`);
+      const data = await apiFetch<{ customer: Customer; addresses: Address[]; orders?: Order[] }>(`/api/customers?id=${id}`);
       setCustomer(data.customer);
       setAddresses(data.addresses);
+      setOrders(data.orders || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar.');
     } finally {
@@ -43,6 +55,13 @@ export default function CustomerDetail() {
   if (loading) return <div className="page"><p className="muted">Carregando…</p></div>;
   if (error) return <div className="page"><div className="alert-error">{error}</div></div>;
   if (!customer) return null;
+
+  const paid = orders.filter((o) => o.payment_status === 'pago' && o.status !== 'cancelado');
+  const totalSpent = paid.reduce((s, o) => s + Number(o.total || 0), 0) || customer.total_spent || 0;
+  const nOrders = orders.length || customer.orders_count || 0;
+  const ticket = paid.length ? totalSpent / paid.length : 0;
+  const ultima = orders[0]?.created_at || null;
+  const primeira = orders.length ? orders[orders.length - 1].created_at : null;
 
   return (
     <div className="page">
@@ -65,12 +84,49 @@ export default function CustomerDetail() {
               <Info label="E-mail" value={customer.email} />
               <Info label="CPF/CNPJ" value={customer.document} mono />
               <Info label="Origem" value={customer.origin} />
+              {customer.utm?.campaign && <Info label="Campanha" value={customer.utm.campaign} />}
+              {customer.utm?.source && <Info label="Origem (UTM)" value={customer.utm.source} />}
               <Info label="Status" value={customer.status} />
               <Info label="Não contatar" value={customer.do_not_contact ? 'Sim (opt-out)' : 'Não'} />
             </div>
             {customer.notes_summary && <p className="notes">{customer.notes_summary}</p>}
           </div>
         )}
+
+      {!editing && (
+        <div className="stat-strip" style={{ marginTop: 18 }}>
+          <div className="stat"><div className="stat-lb">Pedidos</div><div className="stat-vl">{nOrders}</div></div>
+          <div className="stat"><div className="stat-lb">Total gasto</div><div className="stat-vl">{formatBRL(totalSpent)}</div></div>
+          <div className="stat"><div className="stat-lb">Ticket médio</div><div className="stat-vl">{formatBRL(ticket)}</div></div>
+          <div className="stat"><div className="stat-lb">Última compra</div><div className="stat-vl" style={{ fontSize: '1.1rem' }}>{ultima ? formatDate(ultima) : '—'}</div>{primeira && primeira !== ultima && <div className="trend flat" style={{ marginTop: 6 }}>1ª: {formatDate(primeira)}</div>}</div>
+        </div>
+      )}
+
+      {!editing && can('orders.read') && (
+        <>
+          <div className="sec-head" style={{ marginTop: 26 }}><h3>Histórico de pedidos</h3></div>
+          {orders.length === 0
+            ? <div className="att-calm">Nenhum pedido registrado para este cliente ainda.</div>
+            : (
+              <div className="card table-card">
+                <table className="table">
+                  <thead><tr><th>Pedido</th><th>Data</th><th className="right">Valor</th><th>Pagamento</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {orders.map((o) => (
+                      <tr key={o.id} className="row-link" onClick={() => navigate(`/pedidos/${o.id}`)}>
+                        <td className="mono">#{o.number}</td>
+                        <td className="mono">{formatDate(o.created_at)}</td>
+                        <td className="right mono">{formatBRL(o.total)}</td>
+                        <td><span className={`pill ${o.payment_status === 'pago' ? 'pill-ok' : ''}`}>{o.payment_status}</span></td>
+                        <td><span className={`pill ${ORDER_TONE[o.status] || ''}`}>{ORDER_STATUS[o.status] || o.status}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+        </>
+      )}
 
       <div className="page-head" style={{ marginTop: 8 }}>
         <h3>Endereços</h3>
