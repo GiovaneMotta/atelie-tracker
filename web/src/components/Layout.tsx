@@ -2,8 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import {
   LayoutDashboard, ShoppingBag, Factory, PackageCheck, Truck, Calendar,
-  Package, Tags, Wallet, Users, CheckSquare, Settings2, ScrollText,
-  Search, ExternalLink, Menu,
+  Package, Boxes, Tags, Wallet, Users, CheckSquare, Settings2, ScrollText,
+  Globe, Megaphone, BarChart3, FileText, Search, ExternalLink, Menu,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../lib/api';
@@ -20,21 +20,31 @@ const NAV: NavGroup[] = [
   { title: 'Vendas', items: [
     { to: '/pedidos', label: 'Pedidos', icon: ShoppingBag, perm: 'orders.read' },
     { to: '/clientes', label: 'Clientes', icon: Users, perm: 'customers.read' },
+    { to: '/financeiro', label: 'Financeiro', icon: Wallet, perm: 'finance.read' },
+  ] },
+  { title: 'Catálogo', items: [
+    { to: '/produtos', label: 'Produtos', icon: Package, perm: 'products.read' },
+    { to: '/estoque', label: 'Estoque', icon: Boxes, perm: 'products.read' },
+    { to: '/precificacao', label: 'Precificação', icon: Tags, perm: 'products.read' },
+  ] },
+  { title: 'Operação', items: [
     { to: '/producao', label: 'Produção', icon: Factory, perm: 'production.read' },
     { to: '/expedicao', label: 'Expedição', icon: PackageCheck, perm: 'shipments.read', end: true },
     { to: '/envios', label: 'Envios', icon: Truck, perm: 'shipments.read' },
     { to: '/calendario', label: 'Calendário', icon: Calendar, perm: 'production.read' },
-  ] },
-  { title: 'Catálogo', items: [
-    { to: '/produtos', label: 'Produtos', icon: Package, perm: 'products.read' },
-    { to: '/precificacao', label: 'Precificação', icon: Tags, perm: 'products.read' },
-  ] },
-  { title: 'Gestão', items: [
-    { to: '/financeiro', label: 'Financeiro', icon: Wallet, perm: 'finance.read' },
     { to: '/tarefas', label: 'Tarefas', icon: CheckSquare },
   ] },
+  { title: 'Site', items: [
+    { to: '/site/conteudo', label: 'Conteúdo', icon: Globe, perm: 'settings.read' },
+    { to: '/site/seo', label: 'SEO', icon: Search, perm: 'settings.read' },
+  ] },
+  { title: 'Crescimento', items: [
+    { to: '/marketing', label: 'Marketing', icon: Megaphone, perm: 'settings.read' },
+    { to: '/analytics', label: 'Analytics', icon: BarChart3, perm: 'orders.read' },
+    { to: '/relatorios', label: 'Relatórios', icon: FileText, perm: 'orders.read' },
+  ] },
   { title: 'Sistema', items: [
-    { to: '/config/frenet', label: 'Frenet', icon: Settings2, perm: 'settings.read' },
+    { to: '/config', label: 'Configurações', icon: Settings2, perm: 'settings.read', end: true },
     { to: '/config/logs', label: 'Logs', icon: ScrollText, perm: 'settings.read' },
   ] },
 ];
