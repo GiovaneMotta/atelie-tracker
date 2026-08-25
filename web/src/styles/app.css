@@ -145,13 +145,12 @@
 .btn-ghost:hover:not(:disabled) { background: var(--surface-tint); border-color: var(--terracota-soft); }
 .btn-block { width: 100%; }
 
-.alert-error { background: #fbeae8; color: #a33; border: 1px solid #f0cfca; padding: 10px 14px;
-  border-radius: var(--radius-sm); margin-bottom: 12px; font-size: .9rem; }
+.alert-error { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad-soft); padding: 10px 14px;
+  border-radius: var(--radius-sm); margin-bottom: 12px; font-size: .88rem; }
 
 /* ============================ Login ============================ */
-.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px;
-  background: linear-gradient(160deg, var(--cream), var(--cream-2)); }
-.login-card { width: 100%; max-width: 380px; background: var(--white); border: 1px solid var(--line);
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: var(--bg); }
+.login-card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 32px 28px; box-shadow: var(--shadow); }
 .login-brand { text-align: center; margin-bottom: 22px; }
 .login-brand h1 { margin: 8px 0 2px; }
@@ -165,7 +164,7 @@
 
 textarea { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--white);
   color: var(--ink); outline: none; font-family: inherit; resize: vertical; }
-textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,131,106,.15); }
+textarea:focus { border-color: var(--terracota); box-shadow: var(--ring); background: var(--surface); }
 
 .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .info { display: flex; flex-direction: column; gap: 2px; }
@@ -215,8 +214,8 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .table.compact th, .table.compact td { padding: 10px 12px; }
 .right { text-align: right; }
 
-.alert-ok { background: #e6f2ea; color: #2f7d4f; border: 1px solid #bfe0cb; padding: 10px 14px;
-  border-radius: var(--radius-sm); margin-bottom: 12px; font-size: .9rem; }
+.alert-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-soft); padding: 10px 14px;
+  border-radius: var(--radius-sm); margin-bottom: 12px; font-size: .88rem; }
 
 /* ============================ Expedição / Frenet ============================ */
 .env-banner { background: #fff4e0; color: #8a5a12; border-bottom: 1px solid #f0dcae;
@@ -255,7 +254,7 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 .quote-card.is-chosen { border-color: var(--terracota); box-shadow: 0 0 0 2px rgba(201,131,106,.2); }
 .quote-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .quote-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
-.quote-price { font-family: var(--serif); font-size: 1.6rem; color: var(--terracota-dark); }
+.quote-price { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; color: var(--terracota-dark); }
 .quote-days { font-size: .85rem; }
 .quote-card .btn { margin-top: 6px; }
 
@@ -331,7 +330,7 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 
 /* ============================ Calendário ============================ */
 .cal-nav { display: flex; align-items: center; gap: 12px; }
-.cal-month { font-family: var(--serif); font-size: 1.2rem; text-transform: capitalize; min-width: 160px; text-align: center; }
+.cal-month { font-size: 1.05rem; font-weight: 600; text-transform: capitalize; min-width: 160px; text-align: center; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .cal-head-row { margin-bottom: 6px; }
 .cal-wd { text-align: center; font-size: .72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); font-weight: 600; padding: 4px; }
@@ -456,7 +455,7 @@ textarea:focus { border-color: var(--terracota); box-shadow: 0 0 0 3px rgba(201,
 @media (max-width: 900px) { .agenda-grid { grid-template-columns: 1fr; } }
 
 /* ============================ Automações / Flow builder ============================ */
-.flow-name { font-family: var(--serif); font-size: 1.5rem; border: none; border-bottom: 1px dashed var(--line);
+.flow-name { font-size: 1.25rem; font-weight: 600; border: none; border-bottom: 1px dashed var(--line);
   background: transparent; outline: none; color: var(--ink); min-width: 260px; }
 .flow-name:focus { border-color: var(--terracota); }
 .flow-issues { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
