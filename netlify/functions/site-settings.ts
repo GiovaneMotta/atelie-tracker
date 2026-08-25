@@ -22,12 +22,26 @@ const DEFAULTS = {
   whatsappMessage: '',
   siteUrl: '',
   payment: { pixDiscountPct: 5, installmentsMax: 6, freeShippingFrom: '' },
+  // Hero (conteúdo do topo do site). Semente = conteúdo atual do site.
+  content: {
+    heroEyebrow: '✦ Saídas Maternidade Premium',
+    heroTitle: 'As primeiras\nmemórias merecem\n*ser inesquecíveis*',
+    heroSubtitle: 'Saídas maternidade artesanais, em tecidos nobres e acabamento à mão — feitas com amor para o momento mais especial da sua vida.',
+    heroImage: 'images/acessorios/banner-1781096829384.webp',
+  },
+  banners: [] as any[],   // vazio = site usa o hero acima (fallback do próprio site)
 };
+const HERO_KEYS = ['heroEyebrow', 'heroTitle', 'heroSubtitle', 'heroImage'] as const;
 
 async function loadConfig(): Promise<Record<string, any>> {
   const { data } = await admin().from('app_settings').select('value').eq('key', KEY).maybeSingle();
   const cur = (data?.value as any) || {};
-  return { ...DEFAULTS, ...cur, payment: { ...DEFAULTS.payment, ...(cur.payment || {}) } };
+  return {
+    ...DEFAULTS, ...cur,
+    payment: { ...DEFAULTS.payment, ...(cur.payment || {}) },
+    content: { ...DEFAULTS.content, ...(cur.content || {}) },
+    banners: Array.isArray(cur.banners) ? cur.banners : DEFAULTS.banners,
+  };
 }
 
 /** Aceita só os campos conhecidos (whitelist). Mantém o resto do value intacto. */
@@ -45,6 +59,20 @@ function sanitize(body: any, current: Record<string, any>): Record<string, any> 
       installmentsMax: Math.max(0, Math.trunc(Number(body.payment.installmentsMax) || 0)),
       freeShippingFrom: String(body.payment.freeShippingFrom ?? '').trim(),
     };
+  }
+  if (body.content && typeof body.content === 'object') {
+    next.content = { ...(current.content || {}) };
+    for (const k of HERO_KEYS) if (typeof body.content[k] === 'string') next.content[k] = body.content[k];
+  }
+  if (Array.isArray(body.banners)) {
+    next.banners = body.banners.slice(0, 12).map((b: any) => ({
+      eyebrow: String(b.eyebrow ?? '').slice(0, 120),
+      title: String(b.title ?? '').slice(0, 240),
+      subtitle: String(b.subtitle ?? '').slice(0, 400),
+      image: String(b.image ?? '').slice(0, 600),
+      buttonText: String(b.buttonText ?? '').slice(0, 60),
+      buttonLink: String(b.buttonLink ?? '').slice(0, 400),
+    })).filter((b) => b.title || b.image || b.subtitle);
   }
   return next;
 }
