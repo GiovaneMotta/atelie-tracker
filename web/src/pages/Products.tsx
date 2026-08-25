@@ -6,11 +6,17 @@ import { formatBRL, parseBRL } from '../lib/format';
 interface Variant { id?: string; size: string; color: string; gender: string; price_delta: number | string; }
 interface Addon { id?: string; name: string; price: number | string; requires_text: boolean; }
 interface Product {
-  id: string; sku: string | null; name: string; description: string | null;
-  price_cash: number | null; price_card: number | null; status: string;
+  id: string; sku: string | null; name: string; slug?: string | null; description: string | null;
+  price_cash: number | null; price_card: number | null; original_price?: number | null; installments_max?: number | null; status: string;
   weight_kg: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null;
   featured?: boolean; images: string[]; product_categories?: { category: string }[];
   product_variants?: Variant[]; product_addons?: Addon[];
+}
+
+/** "aurora rosê" -> "aurora-rose" (slug amigável p/ URL) */
+function slugify(s: string): string {
+  return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
 const CATEGORIES = ['menina', 'menino', 'unissex', 'luxo', 'manta', 'cueiro', 'kit'];
@@ -21,7 +27,14 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Product | 'new' | null>(null);
+  const [q, setQ] = useState('');
+  const [statusF, setStatusF] = useState('');
   const writable = can('products.write');
+
+  const term = q.trim().toLowerCase();
+  const filtered = list.filter((p) =>
+    (!term || p.name.toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term)) &&
+    (!statusF || p.status === statusF));
 
   async function load() {
     setLoading(true);
@@ -43,8 +56,17 @@ export default function Products() {
   return (
     <div className="page">
       <div className="page-head">
-        <div><h1>Produtos</h1><p className="muted">{loading ? 'Carregando…' : `${list.length} produto(s)`}</p></div>
+        <div><h1>Produtos</h1><p className="muted">{loading ? 'Carregando…' : `${filtered.length} de ${list.length} produto(s)`}</p></div>
         {writable && <button className="btn btn-primary" onClick={() => setEditing('new')}>+ Novo produto</button>}
+      </div>
+
+      <div className="filters" style={{ marginBottom: 16 }}>
+        <div className="search"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome ou SKU…" /></div>
+        <select value={statusF} onChange={(e) => setStatusF(e.target.value)}>
+          <option value="">Todos os status</option>
+          <option value="ativo">Ativo</option><option value="inativo">Inativo</option>
+          <option value="esgotado">Esgotado</option><option value="oculto">Oculto</option>
+        </select>
       </div>
 
       {error && <div className="alert-error">{error}</div>}
@@ -53,8 +75,8 @@ export default function Products() {
         <table className="table">
           <thead><tr><th></th><th>Produto</th><th>SKU</th><th>Categorias</th><th>À vista</th><th>Peso</th><th>Status</th></tr></thead>
           <tbody>
-            {!loading && list.length === 0 && <tr><td colSpan={7} className="muted center">Nenhum produto ainda.</td></tr>}
-            {list.map((p) => (
+            {!loading && filtered.length === 0 && <tr><td colSpan={7} className="muted center">{list.length === 0 ? 'Nenhum produto ainda.' : 'Nenhum produto encontrado.'}</td></tr>}
+            {filtered.map((p) => (
               <tr key={p.id} className={writable ? 'row-link' : ''} onClick={() => writable && setEditing(p)}>
                 <td>{p.images?.[0]
                   ? <img src={displaySrc(p.images[0])} alt="" style={THUMB_MINI} loading="lazy" />
@@ -76,9 +98,11 @@ export default function Products() {
 
 function ProductEditor({ product, onSaved, onCancel }: { product: Product | null; onSaved: () => void; onCancel: () => void }) {
   const [f, setF] = useState({
-    name: product?.name || '', sku: product?.sku || '', status: product?.status || 'ativo',
+    name: product?.name || '', sku: product?.sku || '', slug: product?.slug || '', status: product?.status || 'ativo',
     price_cash: product?.price_cash != null ? String(product.price_cash) : '',
     price_card: product?.price_card != null ? String(product.price_card) : '',
+    original_price: product?.original_price != null ? String(product.original_price) : '',
+    installments_max: product?.installments_max != null ? String(product.installments_max) : '',
     weight_kg: product?.weight_kg != null ? String(product.weight_kg) : '',
     length_cm: product?.length_cm != null ? String(product.length_cm) : '',
     width_cm: product?.width_cm != null ? String(product.width_cm) : '',
@@ -98,29 +122,51 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
     setCategories((cur) => cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]);
   }
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true); setError('');
-    const payload = {
-      name: f.name, sku: f.sku || null, status: f.status,
+  function basePayload() {
+    return {
+      name: f.name, sku: f.sku || null, slug: (f.slug || slugify(f.name)) || null, status: f.status,
       price_cash: f.price_cash ? parseBRL(f.price_cash) : null,
       price_card: f.price_card ? parseBRL(f.price_card) : null,
+      original_price: f.original_price ? parseBRL(f.original_price) : null,
+      installments_max: f.installments_max ? Math.trunc(parseBRL(f.installments_max)) : null,
       weight_kg: f.weight_kg ? parseBRL(f.weight_kg) : null,
       length_cm: f.length_cm ? parseBRL(f.length_cm) : null,
       width_cm: f.width_cm ? parseBRL(f.width_cm) : null,
       height_cm: f.height_cm ? parseBRL(f.height_cm) : null,
       description: f.description || null,
-      featured,
-      images,
-      categories,
+      featured, images, categories,
       variants: variants.map((v) => ({ ...v, price_delta: parseBRL(v.price_delta) })),
       addons: addons.map((a) => ({ ...a, price: parseBRL(a.price) })),
     };
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true); setError('');
     try {
-      if (product) await apiFetch(`/api/products?id=${product.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
-      else await apiFetch('/api/products', { method: 'POST', body: JSON.stringify(payload) });
+      if (product) await apiFetch(`/api/products?id=${product.id}`, { method: 'PATCH', body: JSON.stringify(basePayload()) });
+      else await apiFetch('/api/products', { method: 'POST', body: JSON.stringify(basePayload()) });
       onSaved();
-    } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao salvar.'); } finally { setBusy(false); }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao salvar.'); setBusy(false); }
+  }
+
+  async function duplicate() {
+    setBusy(true); setError('');
+    try {
+      const p = { ...basePayload(), name: `${f.name} (cópia)`, sku: f.sku ? `${f.sku}-copia` : null, slug: null, status: 'inativo' };
+      await apiFetch('/api/products', { method: 'POST', body: JSON.stringify(p) });
+      onSaved();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao duplicar.'); setBusy(false); }
+  }
+
+  async function remove() {
+    if (!product) return;
+    if (!window.confirm(`Excluir "${product.name}"? Esta ação não pode ser desfeita.`)) return;
+    setBusy(true); setError('');
+    try {
+      await apiFetch(`/api/products?id=${product.id}`, { method: 'DELETE' });
+      onSaved();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao excluir.'); setBusy(false); }
   }
 
   const statusLabel = ({ ativo: 'Ativo', inativo: 'Inativo', esgotado: 'Esgotado', oculto: 'Oculto' } as Record<string, string>)[f.status] || f.status;
@@ -138,8 +184,10 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
             </h1>
           </div>
           <div className="page-actions">
+            {product && <button type="button" className="btn btn-ghost btn-danger" disabled={busy} onClick={remove}>Excluir</button>}
+            {product && <button type="button" className="btn btn-ghost" disabled={busy} onClick={duplicate}>Duplicar</button>}
             <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
-            <button className="btn btn-primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar alterações'}</button>
+            <button className="btn btn-primary" disabled={busy}>{busy ? 'Salvando…' : (product ? 'Salvar alterações' : 'Criar produto')}</button>
           </div>
         </div>
 
@@ -153,8 +201,11 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
               <div className="form-grid">
                 <label className="field span-all"><span>Nome do produto *</span><input value={f.name} onChange={(e) => set('name', e.target.value)} required /></label>
                 <label className="field"><span>SKU</span><input value={f.sku} onChange={(e) => set('sku', e.target.value)} placeholder="SM-G000" /></label>
-                <label className="field"><span>Preço à vista (R$)</span><input value={f.price_cash} onChange={(e) => set('price_cash', e.target.value)} placeholder="349,00" /></label>
+                <label className="field"><span>Slug (URL)</span><input value={f.slug} onChange={(e) => set('slug', e.target.value)} placeholder={slugify(f.name) || 'gerado-do-nome'} /></label>
+                <label className="field"><span>Preço à vista / Pix (R$)</span><input value={f.price_cash} onChange={(e) => set('price_cash', e.target.value)} placeholder="349,00" /></label>
                 <label className="field"><span>Preço no cartão (R$)</span><input value={f.price_card} onChange={(e) => set('price_card', e.target.value)} placeholder="369,00" /></label>
+                <label className="field"><span>Preço "de" / promocional (R$)</span><input value={f.original_price} onChange={(e) => set('original_price', e.target.value)} placeholder="opcional — mostra riscado" /></label>
+                <label className="field"><span>Parcelas (máx.)</span><input value={f.installments_max} onChange={(e) => set('installments_max', e.target.value)} placeholder="6" inputMode="numeric" /></label>
                 <label className="field span-all"><span>Descrição</span>
                   <textarea rows={4} value={f.description} onChange={(e) => set('description', e.target.value)} placeholder="Conte os detalhes da peça: tecido, bordado, acabamento…" /></label>
               </div>

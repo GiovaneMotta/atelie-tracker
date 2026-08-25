@@ -118,5 +118,16 @@ export const handler: Handler = withHttp(async (event) => {
     return json(event, 200, { product: full });
   }
 
+  if (event.httpMethod === 'DELETE') {
+    const ctx = await requirePermission(event, 'products.write');
+    if (!id) throw badRequest('Informe o id do produto.');
+    const { data: before } = await sb.from('products').select('id, name, sku').eq('id', id).maybeSingle();
+    if (!before) throw notFound('Produto não encontrado.');
+    const { error } = await sb.from('products').delete().eq('id', id);
+    if (error) throw badRequest(error.message);
+    await writeAudit({ actorId: ctx.userId, action: 'delete', entity: 'product', entityId: id, oldValue: before });
+    return json(event, 200, { ok: true });
+  }
+
   throw badRequest('Método não suportado.');
 });
