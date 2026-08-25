@@ -25,6 +25,7 @@ import { handler as frenetSettings } from '../../netlify/functions/frenet-settin
 import { handler as frenetTest } from '../../netlify/functions/frenet-test';
 import { handler as health } from '../../netlify/functions/health';
 import { handler as integrationLogs } from '../../netlify/functions/integration-logs';
+import { handler as inventory } from '../../netlify/functions/inventory';
 import { handler as knowledge } from '../../netlify/functions/knowledge';
 import { handler as leads } from '../../netlify/functions/leads';
 import { handler as materials } from '../../netlify/functions/materials';
@@ -50,7 +51,7 @@ const HANDLERS: Record<string, (event: any, ctx: any) => Promise<any>> = {
   'addresses': addresses, 'agenda': agenda, 'ai-settings': aiSettings, 'ai-suggest': aiSuggest,
   'automations': automations, 'calendar': calendar, 'cep': cep, 'conversations': conversations,
   'customers': customers, 'dashboard': dashboard, 'finance': finance, 'frenet-env': frenetEnv, 'frenet-settings': frenetSettings,
-  'frenet-test': frenetTest, 'health': health, 'integration-logs': integrationLogs, 'knowledge': knowledge,
+  'frenet-test': frenetTest, 'health': health, 'integration-logs': integrationLogs, 'inventory': inventory, 'knowledge': knowledge,
   'leads': leads, 'materials': materials, 'me': me, 'messages': messages, 'orders': orders,
   'parse-recipient': parseRecipient, 'pricing': pricing, 'production': production,
   'product-image': productImage, 'products': products,

@@ -28,8 +28,9 @@ import FreteSettings from './pages/FreteSettings';
 import Logs from './pages/Logs';
 import Placeholder from './pages/Placeholder';
 import Stub from './pages/Stub';
+import Estoque from './pages/Estoque';
 import Configuracoes from './pages/Configuracoes';
-import { Boxes, Globe, Search, Megaphone, BarChart3, FileText } from 'lucide-react';
+import { Globe, Search, Megaphone, BarChart3, FileText } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -87,8 +88,7 @@ export default function App() {
         <Route path="config/whatsapp" element={<ConfigWhatsApp />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="automacoes" element={<Automacoes />} />
-        <Route path="estoque" element={<Stub icon={Boxes} title="Estoque" subtitle="Controle de estoque dos produtos."
-          bullets={['Estoque atual e estoque mínimo por produto', 'Entradas e saídas manuais com histórico', 'Alertas de estoque baixo e esgotado', 'Baixa automática ao confirmar o pagamento']} phase="Fase B" />} />
+        <Route path="estoque" element={<Estoque />} />
         <Route path="site/conteudo" element={<Stub icon={Globe} title="Conteúdo do site" subtitle="Edite o site sem mexer no código."
           bullets={['Hero, banners, vitrines e coleções', 'Depoimentos, benefícios e FAQ', 'Informações gerais (WhatsApp, Instagram, contato)', 'Rodapé e textos institucionais']} phase="Fase D" />} />
         <Route path="site/seo" element={<Stub icon={Search} title="SEO" subtitle="Como a loja aparece no Google e nas redes."
