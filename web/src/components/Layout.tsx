@@ -1,42 +1,43 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import {
+  LayoutDashboard, ShoppingBag, Factory, PackageCheck, Truck, Calendar,
+  Package, Tags, Wallet, Users, CheckSquare, Settings2, ScrollText,
+  Search, ExternalLink, Menu,
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../lib/api';
 
-interface NavItemDef { to: string; label: string; icon: string; perm?: string; end?: boolean; }
+type Icon = ComponentType<{ size?: number; strokeWidth?: number }>;
+interface NavItemDef { to: string; label: string; icon: Icon; perm?: string; end?: boolean; }
 interface NavGroup { title: string; items: NavItemDef[]; }
 
-// ===== FOCO ATUAL: operação / logística (catálogo, pedidos, expedição) =====
-// O atendimento no WhatsApp fica no TResCRM; aqui focamos no que ele não faz.
+// Foco atual: operação/logística. Atendimento (WhatsApp/IA) fica oculto por ora.
 const NAV: NavGroup[] = [
-  { title: 'Operação', items: [
-    { to: '/', label: 'Dashboard', icon: '📊', end: true },
-    { to: '/pedidos', label: 'Pedidos', icon: '📦', perm: 'orders.read' },
-    { to: '/producao', label: 'Produção', icon: '🏭', perm: 'production.read' },
-    { to: '/expedicao', label: 'Expedição', icon: '📮', perm: 'shipments.read', end: true },
-    { to: '/envios', label: 'Envios', icon: '🚚', perm: 'shipments.read' },
-    { to: '/calendario', label: 'Calendário', icon: '🗓️', perm: 'production.read' },
+  { title: 'Principal', items: [
+    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  ] },
+  { title: 'Vendas', items: [
+    { to: '/pedidos', label: 'Pedidos', icon: ShoppingBag, perm: 'orders.read' },
+    { to: '/clientes', label: 'Clientes', icon: Users, perm: 'customers.read' },
+    { to: '/producao', label: 'Produção', icon: Factory, perm: 'production.read' },
+    { to: '/expedicao', label: 'Expedição', icon: PackageCheck, perm: 'shipments.read', end: true },
+    { to: '/envios', label: 'Envios', icon: Truck, perm: 'shipments.read' },
+    { to: '/calendario', label: 'Calendário', icon: Calendar, perm: 'production.read' },
   ] },
   { title: 'Catálogo', items: [
-    { to: '/produtos', label: 'Produtos', icon: '🧸', perm: 'products.read' },
-    { to: '/precificacao', label: 'Precificação', icon: '💰', perm: 'products.read' },
+    { to: '/produtos', label: 'Produtos', icon: Package, perm: 'products.read' },
+    { to: '/precificacao', label: 'Precificação', icon: Tags, perm: 'products.read' },
   ] },
   { title: 'Gestão', items: [
-    { to: '/financeiro', label: 'Financeiro', icon: '💵', perm: 'finance.read' },
-    { to: '/clientes', label: 'Clientes', icon: '👥', perm: 'customers.read' },
-    { to: '/tarefas', label: 'Tarefas', icon: '✅' },
+    { to: '/financeiro', label: 'Financeiro', icon: Wallet, perm: 'finance.read' },
+    { to: '/tarefas', label: 'Tarefas', icon: CheckSquare },
   ] },
-  { title: 'Configurações', items: [
-    { to: '/config/frenet', label: 'Frenet', icon: '⚙️', perm: 'settings.read' },
-    { to: '/config/logs', label: 'Logs', icon: '📋', perm: 'settings.read' },
+  { title: 'Sistema', items: [
+    { to: '/config/frenet', label: 'Frenet', icon: Settings2, perm: 'settings.read' },
+    { to: '/config/logs', label: 'Logs', icon: ScrollText, perm: 'settings.read' },
   ] },
 ];
-
-// ===== ESCONDIDOS (não deletados) — módulos de atendimento/marketing no
-// WhatsApp. As páginas e rotas continuam existindo; basta mover de volta
-// para NAV quando quisermos reativá-los (ex.: com um número dedicado).
-// Agenda, Inbox, Funil, Automações, Campanhas, Conhecimento, Atendente IA, WhatsApp.
-// ==========================================================================
 
 const SITE_URL = 'https://ateliedalili-site.pages.dev';
 
@@ -61,7 +62,7 @@ export default function Layout() {
     <div className="shell">
       <aside className={`sidebar ${open ? 'is-open' : ''}`}>
         <div className="brand">
-          <span className="brand-mark">🧸</span>
+          <span className="brand-mark">A</span>
           <div className="brand-txt">
             <strong>Ateliê da Lili</strong>
             <span>Painel</span>
@@ -69,9 +70,7 @@ export default function Layout() {
         </div>
 
         <div className="nav-search">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-            <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-          </svg>
+          <Search size={15} strokeWidth={2} />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar no menu…" aria-label="Buscar no menu" />
         </div>
 
@@ -87,7 +86,7 @@ export default function Layout() {
                   className={({ isActive }) => `nav-item ${isActive ? 'is-active' : ''}`}
                   onClick={() => setOpen(false)}
                 >
-                  <span className="nav-ico">{n.icon}</span> {n.label}
+                  <n.icon size={17} strokeWidth={1.9} /> {n.label}
                 </NavLink>
               ))}
             </div>
@@ -109,14 +108,11 @@ export default function Layout() {
 
       <div className="content">
         <header className="topbar">
-          <button className="icon-btn" onClick={() => setOpen((v) => !v)} aria-label="Menu">☰</button>
-          <div className="topbar-brand only-mobile"><span>🧸</span> Ateliê da Lili</div>
+          <button className="icon-btn" onClick={() => setOpen((v) => !v)} aria-label="Menu"><Menu size={22} /></button>
+          <div className="topbar-brand only-mobile"><span className="brand-mark">A</span> Ateliê da Lili</div>
           <div className="topbar-spacer" />
           <a className="topbar-link" href={SITE_URL} target="_blank" rel="noreferrer" title="Abrir o site público">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14 21 3" />
-            </svg>
-            Ver no site
+            <ExternalLink size={15} /> Ver no site
           </a>
           <div className="topbar-user">
             <div className="who-avatar sm">{initial}</div>

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  DollarSign, ShoppingBag, BarChart2, Users, Package, Percent,
-  TrendingUp, TrendingDown, AlertTriangle, Truck, Boxes, RefreshCw,
-  ArrowRight, ArrowUpRight, Info,
+  DollarSign, ShoppingBag, BarChart2, Package,
+  TrendingUp, TrendingDown, Truck, Boxes, RefreshCw,
+  ArrowRight, Info,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../lib/api';
@@ -117,6 +117,7 @@ export default function Dashboard() {
     <div className="page">
       <div className="page-head">
         <div>
+          <div className="dash-ov">Visão geral</div>
           <h1>{greet}, {me?.name?.split(' ')[0] || 'bem-vinda'}</h1>
           <p className="dash-sub">Veja como está a loja — {d?.period?.label?.toLowerCase() || 'carregando…'}.</p>
         </div>
@@ -142,10 +143,6 @@ export default function Dashboard() {
           <div className="stat-vl">{sales ? formatBRL(sales.ticket.value) : '—'}</div><Delta m={sales?.ticket} /></div>
         <div className="stat"><div className="stat-lb"><Package /> Itens vendidos</div>
           <div className="stat-vl">{sales ? sales.items.value : '—'}</div></div>
-        <div className="stat"><div className="stat-lb"><Users /> Clientes</div>
-          <div className="stat-vl">{sales ? sales.customers.value : '—'}</div></div>
-        <div className="stat"><div className="stat-lb"><Percent /> Conversão</div>
-          <div className="stat-vl na">não conectado</div></div>
       </div>
 
       {/* Atenção necessária */}

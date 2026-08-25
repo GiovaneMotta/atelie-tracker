@@ -1,54 +1,57 @@
 /* =====================================================================
-   Ateliê da Lili · Painel — design tokens + base
-   Identidade: terracota quente + rosé de maternidade, creme, tinta cacau.
-   Tipografia: Cormorant Garamond (serifada, boutique) + Jost (sans).
+   Ateliê da Lili · Painel — Design System (SaaS moderno)
+   Neutro e sofisticado; terracota da marca só como ACENTO.
+   Tipografia: Geist (fallback Inter) para toda a interface.
+   A serifada (Cormorant) fica reservada a usos muito pontuais.
+   Mantém os MESMOS nomes de token usados no app.css para que todo o
+   painel adote a nova base de forma consistente.
    ===================================================================== */
 :root {
-  /* Marca */
-  --terracota:      #c9836a;
-  --terracota-dark: #b06246;
-  --terracota-deep: #8f4e37;
-  --terracota-soft: #eccabb;
-  --terracota-tint: #f7e9e1;   /* fundo suave p/ hover/estados */
-  --rose:           #d98f98;
-  --rose-soft:      #f7e6e8;
+  /* Acento (marca) — usado com moderação */
+  --terracota:      #C0673F;
+  --terracota-dark: #A9552F;
+  --terracota-deep: #8F4A2A;
+  --terracota-soft: #E7CDBF;
+  --terracota-tint: #F6EAE3;   /* fundo suave p/ hover/estado ativo */
+  --rose:           #C98B90;
+  --rose-soft:      #F5EAEA;
 
-  /* Superfícies quentes */
-  --bg:             #f6efe8;
-  --cream:          #faf6f2;
-  --cream-2:        #f3ebe4;
-  --surface:        #ffffff;
-  --surface-tint:   #fdfaf7;
+  /* Neutros quentes */
+  --bg:             #FBFAF8;
+  --cream:          #FBFAF8;
+  --cream-2:        #F1ECE5;
+  --surface:        #FFFFFF;
+  --surface-tint:   #FAF8F5;
 
   /* Tinta / linhas */
-  --ink:            #3a2f2a;
-  --ink-soft:       #7a6b62;
-  --ink-faint:      #a89a8f;
-  --line:           #ece1d7;
-  --line-soft:      #f4ece4;
-  --white:          #ffffff;
+  --ink:            #211D19;
+  --ink-soft:       #6C645C;
+  --ink-faint:      #9E958C;
+  --line:           #ECE7E0;
+  --line-soft:      #F4F0EA;
+  --white:          #FFFFFF;
 
-  /* Semânticos (cor + fundo suave) */
-  --ok:   #4b9e6b;  --ok-soft:   #e7f3ea;
-  --bad:  #cc5b52;  --bad-soft:  #fbeae8;
-  --warn: #cf982f;  --warn-soft: #fbf1dc;
-  --info: #6f8fb0;  --info-soft: #eaf0f6;
+  /* Semânticos (dessaturados) + fundos suaves */
+  --ok:   #3E9B69;  --ok-soft:   #E7F1EB;
+  --bad:  #C6544A;  --bad-soft:  #F8E9E7;
+  --warn: #B0812B;  --warn-soft: #F6EEDD;
+  --info: #5B7C95;  --info-soft: #EAEFF3;
 
   /* Forma */
-  --radius:    16px;
-  --radius-lg: 20px;
-  --radius-sm: 10px;
-  --radius-xs: 8px;
+  --radius:    12px;
+  --radius-lg: 16px;
+  --radius-sm: 9px;
+  --radius-xs: 7px;
 
-  /* Sombras quentes, em camadas */
-  --shadow-xs: 0 1px 2px rgba(120,80,60,.06);
-  --shadow-sm: 0 2px 10px rgba(140,95,70,.08);
-  --shadow:    0 12px 32px rgba(140,95,70,.10);
-  --shadow-lg: 0 26px 64px rgba(120,75,55,.16);
-  --ring:      0 0 0 3px rgba(201,131,106,.18);
+  /* Sombras discretas e quentes */
+  --shadow-xs: 0 1px 2px rgba(60,45,35,.05);
+  --shadow-sm: 0 1px 3px rgba(60,45,35,.06);
+  --shadow:    0 6px 22px rgba(60,45,35,.08);
+  --shadow-lg: 0 20px 48px rgba(50,35,25,.14);
+  --ring:      0 0 0 3px rgba(192,103,63,.16);
 
-  --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  --sans:  'Jost', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans:  'Geist', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -57,34 +60,30 @@ body {
   margin: 0;
   font-family: var(--sans);
   color: var(--ink);
-  background-color: var(--bg);
-  background-image:
-    radial-gradient(1100px 520px at 90% -10%, var(--rose-soft), transparent 60%),
-    radial-gradient(940px 520px at -8% 2%, var(--terracota-tint), transparent 58%);
-  background-attachment: fixed;
-  font-size: 15px;
-  line-height: 1.55;
+  background: var(--bg);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; color: var(--ink); letter-spacing: .2px; }
-h1 { font-size: 2.05rem; line-height: 1.08; }
-h2 { font-size: 1.6rem; }
-h3 { font-size: 1.28rem; }
+h1, h2, h3 { font-family: var(--sans); font-weight: 600; margin: 0; color: var(--ink); letter-spacing: -0.02em; }
+h1 { font-size: 1.6rem; line-height: 1.15; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1.02rem; }
 a { color: inherit; text-decoration: none; }
 input, select, button, textarea { font-family: inherit; font-size: inherit; }
 
-::selection { background: var(--terracota-soft); color: var(--terracota-deep); }
+::selection { background: var(--terracota-tint); color: var(--terracota-deep); }
 
-/* Scrollbar quente e discreta */
-* { scrollbar-width: thin; scrollbar-color: var(--terracota-soft) transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb { background: var(--terracota-soft); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-*::-webkit-scrollbar-thumb:hover { background: var(--terracota); background-clip: content-box; }
+*::-webkit-scrollbar-thumb { background: var(--cream-2); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--terracota-soft); background-clip: content-box; }
 
 .muted { color: var(--ink-soft); }
 .center { text-align: center; }
-.mono { font-variant-numeric: tabular-nums; letter-spacing: .3px; }
+.mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; letter-spacing: -0.01em; }
 .fullscreen-center { display: grid; place-items: center; height: 100vh; }
 
 @media (prefers-reduced-motion: reduce) {
