@@ -4,13 +4,18 @@ import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 
 interface Payment { pixDiscountPct: number; installmentsMax: number; freeShippingFrom: string; }
-interface Hero { heroEyebrow: string; heroTitle: string; heroSubtitle: string; heroImage: string; }
+interface Hero {
+  heroEyebrow: string; heroTitle: string; heroSubtitle: string; heroImage: string;
+  sobreEyebrow: string; sobreTitle: string; sobreBody1: string; sobreBody2: string;
+}
 interface Banner { eyebrow: string; title: string; subtitle: string; image: string; buttonText: string; buttonLink: string; }
+interface Testimonial { name: string; local: string; text: string; }
 interface Settings {
   atelieName: string; whatsappNumber: string; instagram: string; siteUrl: string;
-  whatsappMessage: string; payment: Payment; content: Hero; banners: Banner[];
+  whatsappMessage: string; payment: Payment; content: Hero; banners: Banner[]; testimonials: Testimonial[];
 }
 const EMPTY_BANNER: Banner = { eyebrow: '', title: '', subtitle: '', image: '', buttonText: 'Ver a coleção', buttonLink: '#catalogo' };
+const EMPTY_TESTIMONIAL: Testimonial = { name: '', local: '', text: '' };
 
 export default function ConteudoSite() {
   const { can } = useAuth();
@@ -31,12 +36,19 @@ export default function ConteudoSite() {
     if (!s) return s; const a = [...s.banners]; const j = i + dir; if (j < 0 || j >= a.length) return s;
     [a[i], a[j]] = [a[j], a[i]]; return { ...s, banners: a };
   });
+  const setTesti = (i: number, k: keyof Testimonial, v: string) => setF((s) => s ? { ...s, testimonials: s.testimonials.map((t, j) => j === i ? { ...t, [k]: v } : t) } : s);
+  const addTesti = () => setF((s) => s ? { ...s, testimonials: [...s.testimonials, { ...EMPTY_TESTIMONIAL }] } : s);
+  const removeTesti = (i: number) => setF((s) => s ? { ...s, testimonials: s.testimonials.filter((_, j) => j !== i) } : s);
 
   async function load() {
     setLoading(true);
     try {
       const data = await apiFetch<{ settings: Settings }>('/api/site-settings');
-      setF({ ...data.settings, banners: Array.isArray(data.settings.banners) ? data.settings.banners : [] });
+      setF({
+        ...data.settings,
+        banners: Array.isArray(data.settings.banners) ? data.settings.banners : [],
+        testimonials: Array.isArray(data.settings.testimonials) ? data.settings.testimonials : [],
+      });
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao carregar.'); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
@@ -99,6 +111,16 @@ export default function ConteudoSite() {
         </div>
 
         <div className="card">
+          <h3>Seção "Sobre"</h3>
+          <div className="form-grid">
+            <label className="field"><span>Selo (eyebrow)</span><input value={f.content.sobreEyebrow} onChange={(e) => setHero('sobreEyebrow', e.target.value)} disabled={!writable} /></label>
+            <label className="field"><span>Título</span><input value={f.content.sobreTitle} onChange={(e) => setHero('sobreTitle', e.target.value)} placeholder="Use *texto* p/ destaque" disabled={!writable} /></label>
+            <label className="field span-all"><span>Parágrafo 1</span><textarea rows={3} value={f.content.sobreBody1} onChange={(e) => setHero('sobreBody1', e.target.value)} disabled={!writable} /></label>
+            <label className="field span-all"><span>Parágrafo 2</span><textarea rows={3} value={f.content.sobreBody2} onChange={(e) => setHero('sobreBody2', e.target.value)} disabled={!writable} /></label>
+          </div>
+        </div>
+
+        <div className="card">
           <div className="card-head-row"><h3>Banners (carrossel do topo)</h3>{writable && <button type="button" className="btn btn-ghost btn-sm" onClick={addBanner}><Plus size={15} /> Banner</button>}</div>
           <p className="muted small" style={{ marginTop: 4 }}>Se houver banners, eles substituem o Hero acima. Vazio = o site usa o Hero.</p>
           {f.banners.length === 0 && <div className="att-calm" style={{ marginTop: 12 }}>Nenhum banner — o site mostra o Hero acima.</div>}
@@ -124,10 +146,29 @@ export default function ConteudoSite() {
           ))}
         </div>
 
+        <div className="card">
+          <div className="card-head-row"><h3>Depoimentos</h3>{writable && <button type="button" className="btn btn-ghost btn-sm" onClick={addTesti}><Plus size={15} /> Depoimento</button>}</div>
+          <p className="muted small" style={{ marginTop: 4 }}>Vazio = o site usa os depoimentos embutidos. A seção some do site se não houver nenhum.</p>
+          {f.testimonials.length === 0 && <div className="att-calm" style={{ marginTop: 12 }}>Nenhum depoimento personalizado — o site usa os padrão.</div>}
+          {f.testimonials.map((t, i) => (
+            <div className="card" key={i} style={{ background: 'var(--surface-tint)', marginTop: 12, marginBottom: 0 }}>
+              <div className="card-head-row" style={{ marginBottom: 10 }}>
+                <strong style={{ fontSize: '.9rem' }}>Depoimento {i + 1}</strong>
+                {writable && <button type="button" className="btn btn-ghost btn-sm btn-danger" onClick={() => removeTesti(i)} aria-label="Remover"><X size={14} /></button>}
+              </div>
+              <div className="form-grid">
+                <label className="field"><span>Nome</span><input value={t.name} onChange={(e) => setTesti(i, 'name', e.target.value)} disabled={!writable} /></label>
+                <label className="field"><span>Cidade/UF</span><input value={t.local} onChange={(e) => setTesti(i, 'local', e.target.value)} placeholder="São Paulo, SP" disabled={!writable} /></label>
+                <label className="field span-all"><span>Texto</span><textarea rows={2} value={t.text} onChange={(e) => setTesti(i, 'text', e.target.value)} disabled={!writable} /></label>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="card" style={{ background: 'var(--surface-tint)' }}>
-          <h3><Info size={17} style={{ color: 'var(--terracota)' }} /> Depoimentos, benefícios e FAQ</h3>
+          <h3><Info size={17} style={{ color: 'var(--terracota)' }} /> Benefícios, FAQ e rodapé</h3>
           <p className="muted small" style={{ marginTop: -6 }}>
-            A edição de depoimentos, benefícios/selos, FAQ e textos do rodapé chega na sequência (Fase D3) — mesmo mecanismo (banco + fallback no site).
+            Esses blocos hoje são fixos no site. Deixo para uma etapa futura (exige mover o HTML deles para o banco) — me avise quando quiser.
           </p>
         </div>
       </form>

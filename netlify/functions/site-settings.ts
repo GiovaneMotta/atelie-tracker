@@ -22,16 +22,21 @@ const DEFAULTS = {
   whatsappMessage: '',
   siteUrl: '',
   payment: { pixDiscountPct: 5, installmentsMax: 6, freeShippingFrom: '' },
-  // Hero (conteúdo do topo do site). Semente = conteúdo atual do site.
+  // Hero + Sobre (conteúdo editável do site). Semente = conteúdo atual.
   content: {
     heroEyebrow: '✦ Saídas Maternidade Premium',
     heroTitle: 'As primeiras\nmemórias merecem\n*ser inesquecíveis*',
     heroSubtitle: 'Saídas maternidade artesanais, em tecidos nobres e acabamento à mão — feitas com amor para o momento mais especial da sua vida.',
     heroImage: 'images/acessorios/banner-1781096829384.webp',
+    sobreEyebrow: 'Nossa história',
+    sobreTitle: 'Feito com amor\n*e carinho*',
+    sobreBody1: '',
+    sobreBody2: '',
   },
-  banners: [] as any[],   // vazio = site usa o hero acima (fallback do próprio site)
+  banners: [] as any[],        // vazio = site usa o hero acima (fallback do próprio site)
+  testimonials: [] as any[],   // vazio = site usa os depoimentos embutidos (fallback)
 };
-const HERO_KEYS = ['heroEyebrow', 'heroTitle', 'heroSubtitle', 'heroImage'] as const;
+const CONTENT_KEYS = ['heroEyebrow', 'heroTitle', 'heroSubtitle', 'heroImage', 'sobreEyebrow', 'sobreTitle', 'sobreBody1', 'sobreBody2'] as const;
 
 async function loadConfig(): Promise<Record<string, any>> {
   const { data } = await admin().from('app_settings').select('value').eq('key', KEY).maybeSingle();
@@ -41,6 +46,7 @@ async function loadConfig(): Promise<Record<string, any>> {
     payment: { ...DEFAULTS.payment, ...(cur.payment || {}) },
     content: { ...DEFAULTS.content, ...(cur.content || {}) },
     banners: Array.isArray(cur.banners) ? cur.banners : DEFAULTS.banners,
+    testimonials: Array.isArray(cur.testimonials) ? cur.testimonials : DEFAULTS.testimonials,
   };
 }
 
@@ -62,7 +68,7 @@ function sanitize(body: any, current: Record<string, any>): Record<string, any> 
   }
   if (body.content && typeof body.content === 'object') {
     next.content = { ...(current.content || {}) };
-    for (const k of HERO_KEYS) if (typeof body.content[k] === 'string') next.content[k] = body.content[k];
+    for (const k of CONTENT_KEYS) if (typeof body.content[k] === 'string') next.content[k] = body.content[k];
   }
   if (Array.isArray(body.banners)) {
     next.banners = body.banners.slice(0, 12).map((b: any) => ({
@@ -73,6 +79,13 @@ function sanitize(body: any, current: Record<string, any>): Record<string, any> 
       buttonText: String(b.buttonText ?? '').slice(0, 60),
       buttonLink: String(b.buttonLink ?? '').slice(0, 400),
     })).filter((b) => b.title || b.image || b.subtitle);
+  }
+  if (Array.isArray(body.testimonials)) {
+    next.testimonials = body.testimonials.slice(0, 30).map((t: any) => ({
+      name: String(t.name ?? '').slice(0, 80),
+      local: String(t.local ?? '').slice(0, 80),
+      text: String(t.text ?? '').slice(0, 500),
+    })).filter((t) => t.name || t.text);
   }
   return next;
 }
