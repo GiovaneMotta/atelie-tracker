@@ -726,3 +726,11 @@ textarea:focus { border-color: var(--terracota); box-shadow: var(--ring); backgr
 .setting-bd p { font-size: .84rem; color: var(--ink-soft); line-height: 1.45; }
 .setting-go { color: var(--ink-faint); flex-shrink: 0; align-self: center; }
 .setting-card:not(:disabled):hover .setting-go { color: var(--terracota); }
+
+/* Gerador de UTM */
+.utm-out { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px;
+  background: var(--surface-tint); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.utm-out code { flex: 1; min-width: 0; font-size: .82rem; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+.utm-recent { display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 12px; border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm); background: var(--surface); }
+.utm-recent code { flex: 1; min-width: 0; font-size: .78rem; color: var(--ink-soft); overflow-x: auto; white-space: nowrap; }
