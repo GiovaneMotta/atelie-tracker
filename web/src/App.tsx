@@ -31,8 +31,9 @@ import Stub from './pages/Stub';
 import Estoque from './pages/Estoque';
 import ConteudoSite from './pages/ConteudoSite';
 import Marketing from './pages/Marketing';
+import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
-import { Search, BarChart3, FileText } from 'lucide-react';
+import { Search, BarChart3 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -97,8 +98,7 @@ export default function App() {
         <Route path="marketing" element={<Marketing />} />
         <Route path="analytics" element={<Stub icon={BarChart3} title="Analytics" subtitle="Da visita à compra — o funil da loja."
           bullets={['Visitantes, sessões e conversão', 'Funil: visita → produto → carrinho → checkout → compra', 'Produtos mais vistos e mais vendidos', 'Origem dos visitantes e das vendas']} phase="Fase H" />} />
-        <Route path="relatorios" element={<Stub icon={FileText} title="Relatórios" subtitle="Números da loja para decidir."
-          bullets={['Vendas por período, produto, categoria e cliente', 'Faturamento, ticket médio e pedidos por status', 'Estoque e origem das vendas', 'Exportação em CSV']} phase="Fase J" />} />
+        <Route path="relatorios" element={<Relatorios />} />
         <Route path="config" element={<Configuracoes />} />
         <Route path="campanhas" element={<Navigate to="/marketing" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
