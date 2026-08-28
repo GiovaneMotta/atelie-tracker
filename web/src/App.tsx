@@ -30,8 +30,9 @@ import Placeholder from './pages/Placeholder';
 import Stub from './pages/Stub';
 import Estoque from './pages/Estoque';
 import ConteudoSite from './pages/ConteudoSite';
+import Marketing from './pages/Marketing';
 import Configuracoes from './pages/Configuracoes';
-import { Search, Megaphone, BarChart3, FileText } from 'lucide-react';
+import { Search, BarChart3, FileText } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -93,8 +94,7 @@ export default function App() {
         <Route path="site/conteudo" element={<ConteudoSite />} />
         <Route path="site/seo" element={<Stub icon={Search} title="SEO" subtitle="Como a loja aparece no Google e nas redes."
           bullets={['Título e meta description (global e por página)', 'Open Graph e imagem de compartilhamento', 'SEO por produto (title, slug, descrição)', 'Sitemap e robots preservados']} phase="Fase E" />} />
-        <Route path="marketing" element={<Stub icon={Megaphone} title="Marketing" subtitle="Campanhas, cupons e links rastreáveis."
-          bullets={['Cupons e promoções com prazo', 'Gerador de links UTM', 'Campanhas e banners', 'Atribuição de vendas por campanha']} phase="Fase I" />} />
+        <Route path="marketing" element={<Marketing />} />
         <Route path="analytics" element={<Stub icon={BarChart3} title="Analytics" subtitle="Da visita à compra — o funil da loja."
           bullets={['Visitantes, sessões e conversão', 'Funil: visita → produto → carrinho → checkout → compra', 'Produtos mais vistos e mais vendidos', 'Origem dos visitantes e das vendas']} phase="Fase H" />} />
         <Route path="relatorios" element={<Stub icon={FileText} title="Relatórios" subtitle="Números da loja para decidir."

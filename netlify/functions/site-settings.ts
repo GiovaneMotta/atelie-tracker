@@ -21,6 +21,9 @@ const DEFAULTS = {
   instagram: '',
   whatsappMessage: '',
   siteUrl: '',
+  metaPixelId: '',
+  ga4Id: '',
+  gtmId: '',
   payment: { pixDiscountPct: 5, installmentsMax: 6, freeShippingFrom: '' },
   // Hero + Sobre (conteúdo editável do site). Semente = conteúdo atual.
   content: {
@@ -58,6 +61,9 @@ function sanitize(body: any, current: Record<string, any>): Record<string, any> 
   if (typeof body.instagram === 'string') next.instagram = body.instagram.trim();
   if (typeof body.whatsappMessage === 'string') next.whatsappMessage = body.whatsappMessage;
   if (typeof body.siteUrl === 'string') next.siteUrl = body.siteUrl.trim();
+  if (typeof body.metaPixelId === 'string') next.metaPixelId = body.metaPixelId.trim();
+  if (typeof body.ga4Id === 'string') next.ga4Id = body.ga4Id.trim();
+  if (typeof body.gtmId === 'string') next.gtmId = body.gtmId.trim();
   if (body.payment && typeof body.payment === 'object') {
     next.payment = {
       ...(current.payment || {}),
