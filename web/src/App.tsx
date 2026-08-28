@@ -32,8 +32,9 @@ import Estoque from './pages/Estoque';
 import ConteudoSite from './pages/ConteudoSite';
 import Marketing from './pages/Marketing';
 import Relatorios from './pages/Relatorios';
+import SeoPage from './pages/Seo';
 import Configuracoes from './pages/Configuracoes';
-import { Search, BarChart3 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -93,8 +94,7 @@ export default function App() {
         <Route path="automacoes" element={<Automacoes />} />
         <Route path="estoque" element={<Estoque />} />
         <Route path="site/conteudo" element={<ConteudoSite />} />
-        <Route path="site/seo" element={<Stub icon={Search} title="SEO" subtitle="Como a loja aparece no Google e nas redes."
-          bullets={['Título e meta description (global e por página)', 'Open Graph e imagem de compartilhamento', 'SEO por produto (title, slug, descrição)', 'Sitemap e robots preservados']} phase="Fase E" />} />
+        <Route path="site/seo" element={<SeoPage />} />
         <Route path="marketing" element={<Marketing />} />
         <Route path="analytics" element={<Stub icon={BarChart3} title="Analytics" subtitle="Da visita à compra — o funil da loja."
           bullets={['Visitantes, sessões e conversão', 'Funil: visita → produto → carrinho → checkout → compra', 'Produtos mais vistos e mais vendidos', 'Origem dos visitantes e das vendas']} phase="Fase H" />} />

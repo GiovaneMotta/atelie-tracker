@@ -38,8 +38,18 @@ const DEFAULTS = {
   },
   banners: [] as any[],        // vazio = site usa o hero acima (fallback do próprio site)
   testimonials: [] as any[],   // vazio = site usa os depoimentos embutidos (fallback)
+  // SEO editável (global + por página). Semente = valores atuais do HTML.
+  seo: {
+    metaTitle: 'Ateliê da Lili — Saídas Maternidade Premium Personalizadas',
+    metaDescription: 'Saídas maternidade premium do Ateliê da Lili: tricô artesanal, bordado à mão e personalização com o nome do bebê. Frete para todo o Brasil, Pix com desconto e até 6x sem juros.',
+    keywords: 'saída maternidade, saída maternidade menina, saída maternidade personalizada, enxoval bebê, tricô bebê, Ateliê da Lili',
+    ogImage: 'images/og-cover.jpg',
+    catalogoTitle: 'Catálogo Completo — Ateliê da Lili',
+    catalogoDescription: 'Todas as saídas maternidade do Ateliê da Lili: tricô artesanal, bordado à mão e personalização com o nome do bebê. Filtre e escolha a sua.',
+  },
 };
 const CONTENT_KEYS = ['heroEyebrow', 'heroTitle', 'heroSubtitle', 'heroImage', 'sobreEyebrow', 'sobreTitle', 'sobreBody1', 'sobreBody2'] as const;
+const SEO_KEYS = ['metaTitle', 'metaDescription', 'keywords', 'ogImage', 'catalogoTitle', 'catalogoDescription'] as const;
 
 async function loadConfig(): Promise<Record<string, any>> {
   const { data } = await admin().from('app_settings').select('value').eq('key', KEY).maybeSingle();
@@ -50,6 +60,7 @@ async function loadConfig(): Promise<Record<string, any>> {
     content: { ...DEFAULTS.content, ...(cur.content || {}) },
     banners: Array.isArray(cur.banners) ? cur.banners : DEFAULTS.banners,
     testimonials: Array.isArray(cur.testimonials) ? cur.testimonials : DEFAULTS.testimonials,
+    seo: { ...DEFAULTS.seo, ...(cur.seo || {}) },
   };
 }
 
@@ -75,6 +86,10 @@ function sanitize(body: any, current: Record<string, any>): Record<string, any> 
   if (body.content && typeof body.content === 'object') {
     next.content = { ...(current.content || {}) };
     for (const k of CONTENT_KEYS) if (typeof body.content[k] === 'string') next.content[k] = body.content[k];
+  }
+  if (body.seo && typeof body.seo === 'object') {
+    next.seo = { ...(current.seo || {}) };
+    for (const k of SEO_KEYS) if (typeof body.seo[k] === 'string') next.seo[k] = body.seo[k].trim().slice(0, 400);
   }
   if (Array.isArray(body.banners)) {
     next.banners = body.banners.slice(0, 12).map((b: any) => ({
