@@ -75,4 +75,11 @@ Para editar o código na máquina nova:
 
 - **Cloudflare Pages:** `/index.html?algumacoisa` pode vir vazio (peculiaridade de rota) — use `/` como endereço canônico.
 - **Dois repositórios separados:** o site é a pasta raiz; o painel é o `atelie-tracker` (normalmente clonado como subpasta `atelie-crm`).
-- **Migrações do banco (SQL):** ficam em `atelie-crm/supabase/migrations/`. São aplicadas no SQL Editor do Supabase (a última foi a `0018_coupons.sql`).
+- **Migrações do banco (SQL):** ficam em `supabase/migrations/` do repositório do painel.
+  São aplicadas **à mão** no SQL Editor do Supabase — não há runner automático.
+  **Em 19/10/2026 descobrimos que 0012 (produção), 0013 (precificação) e 0014
+  (financeiro) nunca tinham sido aplicadas:** as telas existiam no painel e
+  quebravam com `Could not find the table ... in the schema cache`. Foram
+  aplicadas nessa data, junto com as permissões que faltavam.
+  **Antes de concluir que uma tela está com bug, rode `supabase/auditoria_schema.sql`**
+  no SQL Editor: ele lista tabela, função ou coluna que o código espera e o banco não tem.
