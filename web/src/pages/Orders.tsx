@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
@@ -61,7 +61,7 @@ export default function Orders() {
 
 interface PickCustomer { id: string; name: string; whatsapp: string | null; phone: string | null; }
 interface PickVariant { id: string; size: string | null; color: string | null; price_delta: number | null; is_active?: boolean; }
-interface PickProduct { id: string; name: string; sku: string | null; price_cash: number | null; images?: string[] | null; product_variants?: PickVariant[]; }
+interface PickProduct { id: string; name: string; sku: string | null; price_cash: number | null; images?: string[] | null; product_categories?: { category: string | null }[]; product_variants?: PickVariant[]; }
 /* variant = tamanho/cor. O servidor cobra price_cash + price_delta e rotula o item
    como "Nome — RN", entao a linha precisa carregar a variante escolhida. */
 interface Line { product: PickProduct; variant: PickVariant | null; quantity: number; }
@@ -90,7 +90,10 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
   const [custQuery, setCustQuery] = useState('');
   const [custResults, setCustResults] = useState<PickCustomer[]>([]);
   const [prodQuery, setProdQuery] = useState('');
-  const [prodResults, setProdResults] = useState<PickProduct[]>([]);
+  const [catalogo, setCatalogo] = useState<PickProduct[]>([]);
+  const [carregandoCat, setCarregandoCat] = useState(true);
+  const [erroCat, setErroCat] = useState('');
+  const [categoria, setCategoria] = useState('todos');
   const [lines, setLines] = useState<Line[]>([]);
   const [discount, setDiscount] = useState('');
   const [notes, setNotes] = useState('');
@@ -103,12 +106,39 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
     const data = await apiFetch<{ customers: PickCustomer[] }>(`/api/customers?search=${encodeURIComponent(q)}`);
     setCustResults(data.customers.slice(0, 6));
   }
-  async function searchProducts(q: string) {
-    setProdQuery(q);
-    if (q.trim().length < 2) { setProdResults([]); return; }
-    const data = await apiFetch<{ products: PickProduct[] }>(`/api/products?search=${encodeURIComponent(q)}&status=ativo`);
-    setProdResults(data.products.slice(0, 6));
-  }
+  /* 45 pecas cabem na memoria: carrega uma vez e filtra local,
+     em vez de uma requisicao por tecla digitada. */
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const data = await apiFetch<{ products: PickProduct[] }>('/api/products?status=ativo');
+        if (vivo) setCatalogo(data.products ?? []);
+      } catch {
+        if (vivo) setErroCat('Nao foi possivel carregar o catalogo.');
+      } finally {
+        if (vivo) setCarregandoCat(false);
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  const categorias = useMemo(() => {
+    const achadas = new Set<string>();
+    for (const prod of catalogo) {
+      for (const c of prod.product_categories ?? []) if (c.category) achadas.add(c.category);
+    }
+    return Array.from(achadas).sort();
+  }, [catalogo]);
+
+  const visiveis = useMemo(() => {
+    const busca = prodQuery.trim().toLowerCase();
+    return catalogo.filter((prod) => {
+      if (categoria !== 'todos' && !(prod.product_categories ?? []).some((c) => c.category === categoria)) return false;
+      if (!busca) return true;
+      return prod.name.toLowerCase().includes(busca) || (prod.sku ?? '').toLowerCase().includes(busca);
+    });
+  }, [catalogo, categoria, prodQuery]);
   function addLine(p: PickProduct) {
     const vs = activeVariants(p);
     const inicial = vs.length === 1 ? vs[0] : null;   // tamanho unico ja entra escolhido
@@ -117,7 +147,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
       if (found) return cur.map((l) => l === found ? { ...l, quantity: l.quantity + 1 } : l);
       return [...cur, { product: p, variant: inicial, quantity: 1 }];
     });
-    setProdQuery(''); setProdResults([]);
+    setProdQuery('');
   }
   function setVariant(i: number, v: PickVariant) {
     setLines((cur) => {
@@ -173,14 +203,38 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
       <div className="card">
         <h3>Itens</h3>
         <div className="picker">
-          <input placeholder="Buscar produto ativo…" value={prodQuery} onChange={(e) => searchProducts(e.target.value)} />
-          {prodResults.map((p) => (
-            <button key={p.id} className="picker-opt with-thumb" onClick={() => addLine(p)}>
-              <ProdThumb key={p.id} url={p.images?.[0]} />
-              <span style={{ flex: 1 }}>{p.name}</span>
-              <span className="muted">{p.price_cash != null ? formatBRL(p.price_cash) : ''}</span>
-            </button>
-          ))}
+          <input placeholder="Buscar por nome ou SKU…" value={prodQuery} onChange={(e) => setProdQuery(e.target.value)} />
+
+          {categorias.length > 1 && (
+            <div className="cat-tabs">
+              <button type="button" className={'cat-tab' + (categoria === 'todos' ? ' is-on' : '')}
+                onClick={() => setCategoria('todos')}>Todos</button>
+              {categorias.map((c) => (
+                <button key={c} type="button" className={'cat-tab' + (categoria === c ? ' is-on' : '')}
+                  onClick={() => setCategoria(c)}>{c.charAt(0).toUpperCase() + c.slice(1)}</button>
+              ))}
+            </div>
+          )}
+
+          {carregandoCat && <p className="muted small">Carregando catalogo…</p>}
+          {erroCat && <div className="alert-error">{erroCat}</div>}
+
+          {!carregandoCat && !erroCat && (
+            <>
+              <p className="muted small">{visiveis.length} peca(s)</p>
+              <div className="prod-list">
+                {visiveis.map((prod) => (
+                  <button key={prod.id} className="picker-opt with-thumb" onClick={() => addLine(prod)}>
+                    <ProdThumb key={prod.id} url={prod.images?.[0]} />
+                    <span style={{ flex: 1 }}>{prod.name}</span>
+                    {prod.sku && <span className="muted small">{prod.sku}</span>}
+                    <span className="muted">{prod.price_cash != null ? formatBRL(prod.price_cash) : ''}</span>
+                  </button>
+                ))}
+                {visiveis.length === 0 && <p className="muted small">Nenhuma peca encontrada.</p>}
+              </div>
+            </>
+          )}
         </div>
         {lines.length === 0 && <p className="muted">Nenhum item adicionado.</p>}
         {lines.map((l, i) => {
