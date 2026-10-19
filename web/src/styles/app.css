@@ -226,6 +226,14 @@ textarea:focus { border-color: var(--terracota); box-shadow: var(--ring); backgr
 .bordado-tag { display: inline-block; margin-top: 3px; padding: 2px 9px; border-radius: 999px;
   background: var(--rose-soft); color: var(--terracota-deep); font-size: 0.76rem; }
 
+/* Editor da ficha do produto: texto longo e estruturado */
+.editor-ficha { font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.82rem; line-height: 1.65; white-space: pre; overflow-wrap: normal;
+  overflow-x: auto; tab-size: 2; }
+.ficha-ajuda { display: flex; align-items: flex-start; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.ficha-ajuda .muted { flex: 1; min-width: 240px; line-height: 1.6; }
+.ficha-ajuda b { color: var(--ink); font-weight: 600; }
+
 /* Abas de categoria + lista do catalogo no seletor de itens */
 .cat-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
 .cat-tab { padding: 5px 14px; border: 1px solid var(--line); border-radius: 999px;
