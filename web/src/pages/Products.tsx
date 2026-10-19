@@ -301,7 +301,7 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
 const MAX_INPUT_BYTES = 15 * 1024 * 1024; // 15 MB por arquivo (antes de comprimir)
 const MAX_DIM = 1600;                     // maior lado após redimensionar
 const WEBP_QUALITY = 0.82;                // qualidade boa p/ foto de produto
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif';
+const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
 
 /** Prefixa imagens antigas (caminho relativo "images/...") com a origem do
  *  site para que apareçam no painel; URLs completas (Storage) passam direto. */
@@ -317,6 +317,21 @@ function loadImage(file: Blob): Promise<HTMLImageElement> {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível ler a imagem.')); };
     img.src = url;
   });
+}
+
+/* GIF animado nao sobrevive ao canvas: drawImage copia so o primeiro quadro.
+   Entao ele sobe como veio, sem conversao nem redimensionamento. */
+const LIMITE_GIF = 5 * 1024 * 1024;
+
+/** Prepara o arquivo para upload: bytes e content-type a enviar. */
+async function prepararUpload(file: File): Promise<{ blob: Blob; contentType: string }> {
+  if (file.type === 'image/gif') {
+    if (file.size > LIMITE_GIF) {
+      throw new Error('GIF acima de 5 MB. Reduza a duracao ou o tamanho antes de subir.');
+    }
+    return { blob: file, contentType: 'image/gif' };
+  }
+  return { blob: await compressToWebp(file), contentType: 'image/webp' };
 }
 
 /** Redimensiona (se muito grande) e converte para WebP, no navegador. */
@@ -376,13 +391,13 @@ function ImageManager({ productId, images, setImages }:
     const ctrl = new AbortController();
     ctrls.current.set(id, ctrl);
     try {
-      const blob = await compressToWebp(file);
+      const { blob, contentType } = await prepararUpload(file);
       if (ctrl.signal.aborted) throw new DOMException('cancelado', 'AbortError');
       patchUp(id, { status: 'enviando' });
       const dataBase64 = await blobToBase64(blob);
       const res = await apiFetch<{ url: string }>('/api/product-image', {
         method: 'POST',
-        body: JSON.stringify({ product_id: productId, dataBase64, contentType: 'image/webp' }),
+        body: JSON.stringify({ product_id: productId, dataBase64, contentType }),
         signal: ctrl.signal,
       });
       setImages((cur) => [...cur, res.url]);
@@ -419,10 +434,10 @@ function ImageManager({ productId, images, setImages }:
     const old = images[i];
     setReplacing(i);
     try {
-      const blob = await compressToWebp(file);
+      const { blob, contentType } = await prepararUpload(file);
       const dataBase64 = await blobToBase64(blob);
       const res = await apiFetch<{ url: string }>('/api/product-image', {
-        method: 'POST', body: JSON.stringify({ product_id: productId, dataBase64, contentType: 'image/webp' }),
+        method: 'POST', body: JSON.stringify({ product_id: productId, dataBase64, contentType }),
       });
       setImages((cur) => cur.map((u, j) => j === i ? res.url : u));
       if (isStorageUrl(old)) apiFetch('/api/product-image', { method: 'DELETE', body: JSON.stringify({ url: old }) }).catch(() => {});
