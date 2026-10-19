@@ -9,7 +9,7 @@ interface Item { id: string; name: string; sku: string | null; quantity: number;
 
 /** Nome a ser bordado na peca, gravado pelo painel ao criar o pedido. */
 function nomeBordado(it: Item): string {
-  const v = it.customization?.nome_bebe;
+  const v = it.customization?.baby_name;
   return typeof v === 'string' ? v.trim() : '';
 }
 interface Address { street: string | null; number: string | null; district: string | null; city: string | null; state: string | null; cep: string | null; }
@@ -44,6 +44,8 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
+  const [enviandoProd, setEnviandoProd] = useState(false);
+  const [cardsDoPedido, setCardsDoPedido] = useState(0);
 
   async function load() {
     setLoading(true);
@@ -54,6 +56,39 @@ export default function OrderDetail() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro.'); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, [id]);
+
+  /* O cartao de producao nasce manual neste painel. Contamos os que ja
+     existem para este pedido, para nao duplicar a linha de producao. */
+  useEffect(() => {
+    if (!order) return;
+    let vivo = true;
+    apiFetch<{ cards: { order_id: string | null }[] }>('/api/production')
+      .then((d) => { if (vivo) setCardsDoPedido((d.cards ?? []).filter((c) => c.order_id === order.id).length); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [order]);
+
+  async function enviarParaProducao() {
+    if (!order) return;
+    setEnviandoProd(true); setError(''); setMsg('');
+    try {
+      for (const it of order.items) {
+        await apiFetch('/api/production', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: it.quantity > 1 ? it.name + ' (' + it.quantity + 'x)' : it.name,
+            order_id: order.id,
+            customer_id: order.customer?.id ?? null,
+            custom: { baby_name: nomeBordado(it), notes: it.sku ? 'SKU ' + it.sku : '' },
+          }),
+        });
+      }
+      setCardsDoPedido(order.items.length);
+      setMsg(order.items.length + ' cartão(ões) criado(s) na produção.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao enviar para produção.');
+    } finally { setEnviandoProd(false); }
+  }
 
   async function changeStatus(status: string) {
     setError(''); setMsg('');
@@ -102,6 +137,13 @@ export default function OrderDetail() {
                 ))}
               </tbody>
             </table>
+            {can('production.write') && (
+              cardsDoPedido > 0
+                ? <p className="muted small">Já está na produção ({cardsDoPedido} cartão/cartões). <Link to="/producao">ver quadro</Link></p>
+                : <button className="btn btn-ghost btn-sm" disabled={enviandoProd || order.items.length === 0} onClick={enviarParaProducao}>
+                    {enviandoProd ? 'Enviando…' : 'Enviar para produção'}
+                  </button>
+            )}
             <div className="totals slim">
               <div><span>Subtotal</span><strong>{formatBRL(order.subtotal)}</strong></div>
               <div><span>Desconto</span><strong>- {formatBRL(order.discount)}</strong></div>

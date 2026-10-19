@@ -67,8 +67,9 @@ interface PickProduct { id: string; name: string; sku: string | null; price_cash
 interface Line { product: PickProduct; variant: PickVariant | null; quantity: number; nomeBebe: string; }
 
 /* Bordar o nome do bebe e o diferencial do atelie e aparece em toda descricao,
-   mas nao e adicional pago: vai como personalizacao livre do item. */
-const CHAVE_NOME = 'nome_bebe';
+   mas nao e adicional pago: vai como personalizacao livre do item.
+   A chave e a mesma que os cartoes de producao ja usam (custom.baby_name). */
+const CHAVE_NOME = 'baby_name';
 
 function ProdThumb({ url }: { url?: string | null }) {
   const [src, setSrc] = useState(url ? thumbSrc(url) : '');
