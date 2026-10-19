@@ -206,6 +206,13 @@ textarea:focus { border-color: var(--terracota); box-shadow: var(--ring); backgr
 .picker-opt:hover { background: var(--cream-2); }
 .picked { display: flex; align-items: center; gap: 10px; font-weight: 500; }
 
+/* Personalizacao (nome bordado) no item do pedido */
+.bordado { display: flex; align-items: center; gap: 8px; flex: 1; }
+.bordado input { flex: 1; max-width: 260px; padding: 5px 10px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); font-size: 0.85rem; }
+.bordado-tag { display: inline-block; margin-top: 3px; padding: 2px 9px; border-radius: 999px;
+  background: var(--rose-soft); color: var(--terracota-deep); font-size: 0.76rem; }
+
 /* Abas de categoria + lista do catalogo no seletor de itens */
 .cat-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
 .cat-tab { padding: 5px 14px; border: 1px solid var(--line); border-radius: 999px;

@@ -4,7 +4,14 @@ import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { formatBRL, formatDate, formatDateTime, ORDER_STATUS, NEXT_STATUS } from '../lib/format';
 
-interface Item { id: string; name: string; sku: string | null; quantity: number; unit_price: number; line_total: number; addons: { name: string; price: number }[]; }
+interface Item { id: string; name: string; sku: string | null; quantity: number; unit_price: number; line_total: number;
+  addons: { name: string; price: number }[]; customization?: Record<string, unknown> | null; }
+
+/** Nome a ser bordado na peca, gravado pelo painel ao criar o pedido. */
+function nomeBordado(it: Item): string {
+  const v = it.customization?.nome_bebe;
+  return typeof v === 'string' ? v.trim() : '';
+}
 interface Address { street: string | null; number: string | null; district: string | null; city: string | null; state: string | null; cep: string | null; }
 interface Utm { source?: string | null; medium?: string | null; campaign?: string | null; content?: string | null; term?: string | null; }
 interface Order {
@@ -87,6 +94,7 @@ export default function OrderDetail() {
                   <tr key={it.id}>
                     <td><strong>{it.name}</strong>
                       {it.addons?.length > 0 && <div className="muted small">+ {it.addons.map((a) => a.name).join(', ')}</div>}
+                      {nomeBordado(it) && <div className="bordado-tag">Bordar: {nomeBordado(it)}</div>}
                     </td>
                     <td className="mono center">{it.quantity}×</td>
                     <td className="mono right">{formatBRL(it.line_total)}</td>

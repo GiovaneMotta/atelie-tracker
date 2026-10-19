@@ -64,7 +64,11 @@ interface PickVariant { id: string; size: string | null; color: string | null; p
 interface PickProduct { id: string; name: string; sku: string | null; price_cash: number | null; images?: string[] | null; product_categories?: { category: string | null }[]; product_variants?: PickVariant[]; }
 /* variant = tamanho/cor. O servidor cobra price_cash + price_delta e rotula o item
    como "Nome — RN", entao a linha precisa carregar a variante escolhida. */
-interface Line { product: PickProduct; variant: PickVariant | null; quantity: number; }
+interface Line { product: PickProduct; variant: PickVariant | null; quantity: number; nomeBebe: string; }
+
+/* Bordar o nome do bebe e o diferencial do atelie e aparece em toda descricao,
+   mas nao e adicional pago: vai como personalizacao livre do item. */
+const CHAVE_NOME = 'nome_bebe';
 
 function ProdThumb({ url }: { url?: string | null }) {
   const [src, setSrc] = useState(url ? thumbSrc(url) : '');
@@ -115,7 +119,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
         const data = await apiFetch<{ products: PickProduct[] }>('/api/products?status=ativo');
         if (vivo) setCatalogo(data.products ?? []);
       } catch {
-        if (vivo) setErroCat('Nao foi possivel carregar o catalogo.');
+        if (vivo) setErroCat('Não foi possível carregar o catálogo.');
       } finally {
         if (vivo) setCarregandoCat(false);
       }
@@ -143,9 +147,9 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
     const vs = activeVariants(p);
     const inicial = vs.length === 1 ? vs[0] : null;   // tamanho unico ja entra escolhido
     setLines((cur) => {
-      const found = cur.find((l) => l.product.id === p.id && (l.variant?.id ?? null) === (inicial?.id ?? null));
+      const found = cur.find((l) => l.product.id === p.id && (l.variant?.id ?? null) === (inicial?.id ?? null) && !l.nomeBebe);
       if (found) return cur.map((l) => l === found ? { ...l, quantity: l.quantity + 1 } : l);
-      return [...cur, { product: p, variant: inicial, quantity: 1 }];
+      return [...cur, { product: p, variant: inicial, quantity: 1, nomeBebe: '' }];
     });
     setProdQuery('');
   }
@@ -153,7 +157,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
     setLines((cur) => {
       const alvo = { ...cur[i], variant: v };
       /* se ja existe a mesma peca no mesmo tamanho, junta as duas linhas */
-      const gemeo = cur.findIndex((l, j) => j !== i && l.product.id === alvo.product.id && l.variant?.id === v.id);
+      const gemeo = cur.findIndex((l, j) => j !== i && l.product.id === alvo.product.id && l.variant?.id === v.id && l.nomeBebe === alvo.nomeBebe);
       if (gemeo >= 0) {
         return cur
           .map((l, j) => j === gemeo ? { ...l, quantity: l.quantity + alvo.quantity } : l)
@@ -173,7 +177,12 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
     try {
       const payload = {
         customer_id: customer?.id || null,
-        items: lines.map((l) => ({ product_id: l.product.id, variant_id: l.variant?.id ?? null, quantity: l.quantity })),
+        items: lines.map((l) => ({
+          product_id: l.product.id,
+          variant_id: l.variant?.id ?? null,
+          quantity: l.quantity,
+          customization: l.nomeBebe.trim() ? { [CHAVE_NOME]: l.nomeBebe.trim() } : {},
+        })),
         discount: parseFloat(discount.replace(',', '.')) || 0,
         notes: notes || null,
       };
@@ -216,12 +225,12 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
             </div>
           )}
 
-          {carregandoCat && <p className="muted small">Carregando catalogo…</p>}
+          {carregandoCat && <p className="muted small">Carregando catálogo…</p>}
           {erroCat && <div className="alert-error">{erroCat}</div>}
 
           {!carregandoCat && !erroCat && (
             <>
-              <p className="muted small">{visiveis.length} peca(s)</p>
+              <p className="muted small">{visiveis.length} peça(s)</p>
               <div className="prod-list">
                 {visiveis.map((prod) => (
                   <button key={prod.id} className="picker-opt with-thumb" onClick={() => addLine(prod)}>
@@ -231,7 +240,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
                     <span className="muted">{prod.price_cash != null ? formatBRL(prod.price_cash) : ''}</span>
                   </button>
                 ))}
-                {visiveis.length === 0 && <p className="muted small">Nenhuma peca encontrada.</p>}
+                {visiveis.length === 0 && <p className="muted small">Nenhuma peça encontrada.</p>}
               </div>
             </>
           )}
@@ -263,6 +272,13 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
               {vs.length === 1 && l.variant && (
                 <div className="size-row"><span className="muted small">Tamanho {variantLabel(l.variant)}</span></div>
               )}
+              <div className="size-row">
+                <label className="bordado">
+                  <span className="muted small">Bordar nome</span>
+                  <input value={l.nomeBebe} placeholder="nome do bebê (opcional)" maxLength={40}
+                    onChange={(e) => setLines((cur) => cur.map((x, j) => j === i ? { ...x, nomeBebe: e.target.value } : x))} />
+                </label>
+              </div>
             </div>
           );
         })}
