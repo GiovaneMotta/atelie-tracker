@@ -60,8 +60,21 @@ export default function Orders() {
 }
 
 interface PickCustomer { id: string; name: string; whatsapp: string | null; phone: string | null; }
-interface PickProduct { id: string; name: string; sku: string | null; price_cash: number | null; }
-interface Line { product: PickProduct; quantity: number; }
+interface PickVariant { id: string; size: string | null; color: string | null; price_delta: number | null; is_active?: boolean; }
+interface PickProduct { id: string; name: string; sku: string | null; price_cash: number | null; product_variants?: PickVariant[]; }
+/* variant = tamanho/cor. O servidor cobra price_cash + price_delta e rotula o item
+   como "Nome — RN", entao a linha precisa carregar a variante escolhida. */
+interface Line { product: PickProduct; variant: PickVariant | null; quantity: number; }
+
+function activeVariants(p: PickProduct): PickVariant[] {
+  return (p.product_variants ?? []).filter((v) => v.is_active !== false);
+}
+function variantLabel(v: PickVariant): string {
+  return [v.size, v.color].filter(Boolean).join(' / ') || 'Único';
+}
+function unitPrice(l: Line): number {
+  return Number(l.product.price_cash || 0) + Number(l.variant?.price_delta || 0);
+}
 
 function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (id: string) => void }) {
   const [customer, setCustomer] = useState<PickCustomer | null>(null);
@@ -88,15 +101,32 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
     setProdResults(data.products.slice(0, 6));
   }
   function addLine(p: PickProduct) {
+    const vs = activeVariants(p);
+    const inicial = vs.length === 1 ? vs[0] : null;   // tamanho unico ja entra escolhido
     setLines((cur) => {
-      const found = cur.find((l) => l.product.id === p.id);
-      if (found) return cur.map((l) => l.product.id === p.id ? { ...l, quantity: l.quantity + 1 } : l);
-      return [...cur, { product: p, quantity: 1 }];
+      const found = cur.find((l) => l.product.id === p.id && (l.variant?.id ?? null) === (inicial?.id ?? null));
+      if (found) return cur.map((l) => l === found ? { ...l, quantity: l.quantity + 1 } : l);
+      return [...cur, { product: p, variant: inicial, quantity: 1 }];
     });
     setProdQuery(''); setProdResults([]);
   }
+  function setVariant(i: number, v: PickVariant) {
+    setLines((cur) => {
+      const alvo = { ...cur[i], variant: v };
+      /* se ja existe a mesma peca no mesmo tamanho, junta as duas linhas */
+      const gemeo = cur.findIndex((l, j) => j !== i && l.product.id === alvo.product.id && l.variant?.id === v.id);
+      if (gemeo >= 0) {
+        return cur
+          .map((l, j) => j === gemeo ? { ...l, quantity: l.quantity + alvo.quantity } : l)
+          .filter((_, j) => j !== i);
+      }
+      return cur.map((l, j) => j === i ? alvo : l);
+    });
+  }
 
-  const subtotal = lines.reduce((s, l) => s + (Number(l.product.price_cash || 0) * l.quantity), 0);
+  const subtotal = lines.reduce((s, l) => s + unitPrice(l) * l.quantity, 0);
+  /* peca com mais de um tamanho exige escolha: sem isso a producao recebe o pedido em aberto */
+  const semTamanho = lines.filter((l) => !l.variant && activeVariants(l.product).length > 1);
   const total = Math.max(0, subtotal - (parseFloat(discount.replace(',', '.')) || 0));
 
   async function save() {
@@ -104,7 +134,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
     try {
       const payload = {
         customer_id: customer?.id || null,
-        items: lines.map((l) => ({ product_id: l.product.id, quantity: l.quantity })),
+        items: lines.map((l) => ({ product_id: l.product.id, variant_id: l.variant?.id ?? null, quantity: l.quantity })),
         discount: parseFloat(discount.replace(',', '.')) || 0,
         notes: notes || null,
       };
@@ -138,15 +168,34 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
           {prodResults.map((p) => <button key={p.id} className="picker-opt" onClick={() => addLine(p)}>{p.name} <span className="muted">{p.price_cash != null ? formatBRL(p.price_cash) : ''}</span></button>)}
         </div>
         {lines.length === 0 && <p className="muted">Nenhum item adicionado.</p>}
-        {lines.map((l, i) => (
-          <div className="row-inline" key={l.product.id}>
-            <span style={{ flex: 1 }}>{l.product.name}</span>
-            <input type="number" min={1} value={l.quantity} style={{ width: 70 }}
-              onChange={(e) => setLines((cur) => cur.map((x, j) => j === i ? { ...x, quantity: Math.max(1, parseInt(e.target.value) || 1) } : x))} />
-            <span className="mono">{formatBRL(Number(l.product.price_cash || 0) * l.quantity)}</span>
-            <button className="btn-link" onClick={() => setLines((cur) => cur.filter((_, j) => j !== i))}>✕</button>
-          </div>
-        ))}
+        {lines.map((l, i) => {
+          const vs = activeVariants(l.product);
+          return (
+            <div className="order-line" key={l.product.id + '-' + (l.variant?.id ?? 'sem') + '-' + i}>
+              <div className="row-inline">
+                <span style={{ flex: 1 }}>{l.product.name}</span>
+                <input type="number" min={1} value={l.quantity} style={{ width: 70 }}
+                  onChange={(e) => setLines((cur) => cur.map((x, j) => j === i ? { ...x, quantity: Math.max(1, parseInt(e.target.value) || 1) } : x))} />
+                <span className="mono">{formatBRL(unitPrice(l) * l.quantity)}</span>
+                <button className="btn-link" onClick={() => setLines((cur) => cur.filter((_, j) => j !== i))}>✕</button>
+              </div>
+              {vs.length > 1 && (
+                <div className="size-row">
+                  <span className="muted small">Tamanho</span>
+                  {vs.map((v) => (
+                    <button key={v.id} type="button"
+                      className={'size-chip' + (l.variant?.id === v.id ? ' is-on' : '')}
+                      onClick={() => setVariant(i, v)}>{variantLabel(v)}</button>
+                  ))}
+                  {!l.variant && <span className="size-warn">escolha o tamanho</span>}
+                </div>
+              )}
+              {vs.length === 1 && l.variant && (
+                <div className="size-row"><span className="muted small">Tamanho {variantLabel(l.variant)}</span></div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="card form-grid">
@@ -161,9 +210,12 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
         <p className="muted small">O total definitivo é calculado no servidor ao salvar (preços travados no backend).</p>
       </div>
 
+      {semTamanho.length > 0 && (
+        <div className="alert-error">Escolha o tamanho de: {semTamanho.map((l) => l.product.name).join(', ')}.</div>
+      )}
       {error && <div className="alert-error">{error}</div>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={busy || lines.length === 0} onClick={save}>{busy ? 'Criando…' : 'Criar pedido'}</button>
+        <button className="btn btn-primary" disabled={busy || lines.length === 0 || semTamanho.length > 0} onClick={save}>{busy ? 'Criando…' : 'Criar pedido'}</button>
         <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
       </div>
     </div>

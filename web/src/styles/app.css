@@ -206,6 +206,17 @@ textarea:focus { border-color: var(--terracota); box-shadow: var(--ring); backgr
 .picker-opt:hover { background: var(--cream-2); }
 .picked { display: flex; align-items: center; gap: 10px; font-weight: 500; }
 
+/* Linha do pedido: peca + escolha de tamanho (variante) */
+.order-line { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.order-line:last-child { border-bottom: 0; }
+.size-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; }
+.size-chip { padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--ink-soft); font-size: 0.82rem; cursor: pointer; }
+.size-chip:hover { border-color: var(--terracota-soft); }
+.size-chip.is-on { background: var(--terracota-tint); border-color: var(--terracota);
+  color: var(--terracota-deep); font-weight: 600; }
+.size-warn { font-size: 0.78rem; color: var(--terracota-dark); }
+
 .totals { display: flex; flex-direction: column; gap: 6px; }
 .totals.slim { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .totals > div { display: flex; justify-content: space-between; }
