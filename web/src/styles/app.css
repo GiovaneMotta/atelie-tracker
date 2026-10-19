@@ -206,6 +206,19 @@ textarea:focus { border-color: var(--terracota); box-shadow: var(--ring); backgr
 .picker-opt:hover { background: var(--cream-2); }
 .picked { display: flex; align-items: center; gap: 10px; font-weight: 500; }
 
+/* Aviso de endereco incompleto (pedido do site chega so com CEP) */
+.aviso-incompleto { margin: 6px 0 0; padding: 7px 11px; border-radius: var(--radius-sm);
+  background: #FDF3E7; border: 1px solid #E8C9A0; color: #8A5A1E; font-size: 0.82rem; }
+
+/* Faixas de estado do pedido: pagamento, producao e envio lado a lado */
+.faixas { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+.faixa { display: flex; align-items: center; gap: 7px; padding: 7px 13px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 0.82rem; }
+.faixa b { font-weight: 600; }
+.faixa .ponto { width: 8px; height: 8px; border-radius: 999px; background: var(--line); flex: none; }
+.faixa.ok .ponto { background: var(--ok); }
+.faixa.pendente .ponto { background: #E0A458; }
+
 /* Personalizacao (nome bordado) no item do pedido */
 .bordado { display: flex; align-items: center; gap: 8px; flex: 1; }
 .bordado input { flex: 1; max-width: 260px; padding: 5px 10px; border: 1px solid var(--line);

@@ -68,8 +68,9 @@ interface Line { product: PickProduct; variant: PickVariant | null; quantity: nu
 
 /* Bordar o nome do bebe e o diferencial do atelie e aparece em toda descricao,
    mas nao e adicional pago: vai como personalizacao livre do item.
-   A chave e a mesma que os cartoes de producao ja usam (custom.baby_name). */
-const CHAVE_NOME = 'baby_name';
+   A chave e 'nome', a mesma que o site grava via create_site_order: pedido
+   manual e pedido do site precisam ser lidos do mesmo jeito. */
+const CHAVE_NOME = 'nome';
 
 function ProdThumb({ url }: { url?: string | null }) {
   const [src, setSrc] = useState(url ? thumbSrc(url) : '');

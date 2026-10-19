@@ -3,16 +3,19 @@ import { useParams, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { formatBRL, formatDate, formatDateTime, ORDER_STATUS, NEXT_STATUS } from '../lib/format';
+import OrderAddress, { Address, enderecoCompleto } from '../components/OrderAddress';
+import OrderPayment from '../components/OrderPayment';
 
 interface Item { id: string; name: string; sku: string | null; quantity: number; unit_price: number; line_total: number;
   addons: { name: string; price: number }[]; customization?: Record<string, unknown> | null; }
 
-/** Nome a ser bordado na peca, gravado pelo painel ao criar o pedido. */
+/** Nome a ser bordado. O site grava em customization.nome (create_site_order);
+    baby_name fica aceito por causa dos pedidos criados antes do alinhamento. */
 function nomeBordado(it: Item): string {
-  const v = it.customization?.baby_name;
+  const c = it.customization ?? {};
+  const v = c.nome ?? c.baby_name;
   return typeof v === 'string' ? v.trim() : '';
 }
-interface Address { street: string | null; number: string | null; district: string | null; city: string | null; state: string | null; cep: string | null; }
 interface Utm { source?: string | null; medium?: string | null; campaign?: string | null; content?: string | null; term?: string | null; }
 interface Order {
   id: string; number: number; status: string; payment_status: string; payment_method: string | null;
@@ -105,6 +108,43 @@ export default function OrderDetail() {
 
   const nexts = NEXT_STATUS[order.status] || [];
 
+  /* Pre-condicoes: a maquina de estados do banco so valida a ORDEM dos
+     passos, nunca se o passo faz sentido. Sem isto da para marcar
+     'aguardando etiqueta' sem endereco e despachar sem pagamento. */
+  /* Tres eixos independentes, como nos back-offices de e-commerce:
+     pagamento, producao e envio contam coisas diferentes e nao cabem
+     numa fila unica de 13 degraus. */
+  const ENVIADOS = ['postado', 'em_transito', 'saiu_entrega', 'entregue', 'pos_venda'];
+  const faixaPagamento = order.payment_status === 'pago'
+    ? { classe: 'ok', texto: 'Pago' }
+    : { classe: 'pendente', texto: 'A receber' };
+  const faixaProducao = cardsDoPedido > 0
+    ? { classe: 'ok', texto: cardsDoPedido + ' na linha' }
+    : { classe: 'pendente', texto: 'Não enviado' };
+  const faixaEnvio = order.status === 'entregue' || order.status === 'pos_venda'
+    ? { classe: 'ok', texto: 'Entregue' }
+    : ENVIADOS.includes(order.status)
+      ? { classe: 'ok', texto: 'A caminho' }
+      : enderecoCompleto(order.address)
+        ? { classe: 'pendente', texto: 'Pronto para etiqueta' }
+        : { classe: 'pendente', texto: 'Sem endereço' };
+
+  function motivoBloqueio(destino: string): string {
+    const o = order;
+    if (!o) return '';
+    const exigeEndereco = ['aguardando_etiqueta', 'etiqueta_gerada', 'postado'];
+    if (exigeEndereco.includes(destino) && !enderecoCompleto(o.address)) {
+      return 'defina o endereço completo antes';
+    }
+    if (destino === 'aguardando_etiqueta' && o.payment_status !== 'pago') {
+      return 'registre o pagamento antes';
+    }
+    if (destino === 'cancelado' && !can('orders.cancel')) {
+      return 'cancelamento exige permissão de expedição ou admin';
+    }
+    return '';
+  }
+
   return (
     <div className="page">
       <div className="page-head">
@@ -112,6 +152,11 @@ export default function OrderDetail() {
           <p className="crumb"><Link to="/pedidos">← Pedidos</Link></p>
           <h1>Pedido #{order.number}</h1>
           <p className="muted">Criado em {formatDate(order.created_at)}</p>
+          <div className="faixas">
+            <span className={'faixa ' + faixaPagamento.classe}><span className="ponto" />Pagamento: <b>{faixaPagamento.texto}</b></span>
+            <span className={'faixa ' + faixaProducao.classe}><span className="ponto" />Produção: <b>{faixaProducao.texto}</b></span>
+            <span className={'faixa ' + faixaEnvio.classe}><span className="ponto" />Envio: <b>{faixaEnvio.texto}</b></span>
+          </div>
         </div>
         <span className="badge badge-lg">{ORDER_STATUS[order.status] || order.status}</span>
       </div>
@@ -178,17 +223,11 @@ export default function OrderDetail() {
               ? <p><Link to={`/clientes/${order.customer.id}`}>{order.customer.name}</Link><br /><span className="muted">{order.customer.whatsapp || ''}</span></p>
               : <p className="muted">Sem cliente vinculado.</p>}
           </div>
-          <div className="card">
-            <h3>Endereço de entrega</h3>
-            {order.address
-              ? <p>{[order.address.street, order.address.number].filter(Boolean).join(', ')}<br />
-                  <span className="muted">{[order.address.district, order.address.city, order.address.state].filter(Boolean).join(' · ')} {order.address.cep ? `· ${order.address.cep}` : ''}</span></p>
-              : <p className="muted">Nenhum endereço definido.</p>}
-          </div>
-          <div className="card">
-            <h3>Pagamento</h3>
-            <p><span className="badge">{order.payment_status}</span> {order.payment_method || ''}</p>
-          </div>
+          <OrderAddress orderId={order.id} customerId={order.customer?.id ?? null}
+            address={order.address} onChanged={load} />
+          <OrderPayment orderId={order.id} status={order.status}
+            paymentStatus={order.payment_status} paymentMethod={order.payment_method}
+            onChanged={load} />
 
           <div className="card">
             <h3>Origem</h3>
@@ -208,15 +247,21 @@ export default function OrderDetail() {
             <div className="card">
               <h3>Avançar status</h3>
               <div className="chips">
-                {nexts.map((s) => (
-                  <button key={s} className={`chip ${s === 'cancelado' ? 'chip-danger' : 'chip-on'}`}
-                    onClick={() => changeStatus(s)}
-                    disabled={s === 'cancelado' && !can('orders.cancel')}>
-                    {ORDER_STATUS[s] || s}
-                  </button>
-                ))}
+                {nexts.map((s) => {
+                  const motivo = motivoBloqueio(s);
+                  return (
+                    <button key={s} className={`chip ${s === 'cancelado' ? 'chip-danger' : 'chip-on'}`}
+                      onClick={() => changeStatus(s)}
+                      disabled={Boolean(motivo)}
+                      title={motivo || undefined}>
+                      {ORDER_STATUS[s] || s}
+                    </button>
+                  );
+                })}
               </div>
-              {!can('orders.cancel') && nexts.includes('cancelado') && <p className="muted small">Cancelamento exige permissão de expedição/admin.</p>}
+              {nexts.map((s) => motivoBloqueio(s) ? (
+                <p key={s} className="muted small">{ORDER_STATUS[s] || s}: {motivoBloqueio(s)}.</p>
+              ) : null)}
             </div>
           )}
         </div>
