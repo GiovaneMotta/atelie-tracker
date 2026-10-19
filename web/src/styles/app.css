@@ -206,6 +206,12 @@ textarea:focus { border-color: var(--terracota); box-shadow: var(--ring); backgr
 .picker-opt:hover { background: var(--cream-2); }
 .picked { display: flex; align-items: center; gap: 10px; font-weight: 500; }
 
+/* Miniatura do produto na busca e nas linhas do pedido */
+.prod-thumb { width: 38px; height: 38px; border-radius: 6px; object-fit: cover;
+  background: var(--cream-2); flex: none; display: block; }
+.prod-thumb-empty { border: 1px dashed var(--line); background: transparent; }
+.picker-opt.with-thumb { display: flex; align-items: center; gap: 10px; }
+
 /* Linha do pedido: peca + escolha de tamanho (variante) */
 .order-line { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .order-line:last-child { border-bottom: 0; }

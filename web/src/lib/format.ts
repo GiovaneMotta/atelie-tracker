@@ -120,3 +120,28 @@ export const NEXT_STATUS: Record<string, string[]> = {
   pos_venda: [],
   cancelado: [],
 };
+
+/* Imagens do produto vivem no site publico, nao no painel. */
+export const SITE_BASE = 'https://ateliedalili-site.pages.dev';
+
+function isAbsolute(u: string): boolean {
+  return u.startsWith('http://') || u.startsWith('https://');
+}
+
+/** Caminho relativo do catalogo -> URL absoluta no site. */
+export function displaySrc(u: string): string {
+  if (isAbsolute(u)) return u;
+  let rel = u;
+  while (rel.startsWith('/')) rel = rel.slice(1);
+  return SITE_BASE + '/' + rel;
+}
+
+/** Versao leve (500px) da mesma foto:
+    images/menina/g001-1.jpg -> images/menina/thumb/g001-1.jpg
+    URL absoluta (ex.: storage do Supabase) nao tem miniatura: devolve ela mesma. */
+export function thumbSrc(u: string): string {
+  if (isAbsolute(u)) return u;
+  const corte = u.lastIndexOf('/');
+  if (corte < 0) return displaySrc(u);
+  return displaySrc(u.slice(0, corte) + '/thumb/' + u.slice(corte + 1));
+}

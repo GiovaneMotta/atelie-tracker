@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { formatBRL, parseBRL } from '../lib/format';
+import { formatBRL, parseBRL, displaySrc } from '../lib/format';
 
 interface Variant { id?: string; size: string; color: string; gender: string; price_delta: number | string; }
 interface Addon { id?: string; name: string; price: number | string; requires_text: boolean; }
@@ -301,14 +301,10 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
 const MAX_INPUT_BYTES = 15 * 1024 * 1024; // 15 MB por arquivo (antes de comprimir)
 const MAX_DIM = 1600;                     // maior lado após redimensionar
 const WEBP_QUALITY = 0.82;                // qualidade boa p/ foto de produto
-const SITE_BASE = 'https://ateliedalili-site.pages.dev';
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif';
 
 /** Prefixa imagens antigas (caminho relativo "images/...") com a origem do
  *  site para que apareçam no painel; URLs completas (Storage) passam direto. */
-function displaySrc(u: string): string {
-  return /^https?:\/\//i.test(u) ? u : `${SITE_BASE}/${u.replace(/^\/+/, '')}`;
-}
 function isStorageUrl(u: string): boolean {
   return u.includes('/storage/v1/object/public/catalog/');
 }

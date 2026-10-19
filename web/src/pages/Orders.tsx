@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { formatBRL, formatDate, ORDER_STATUS } from '../lib/format';
+import { formatBRL, formatDate, ORDER_STATUS, displaySrc, thumbSrc } from '../lib/format';
 
 interface OrderRow { id: string; number: number; total: number; status: string; channel: string | null; created_at: string; customer: { name: string } | null; }
 
@@ -61,10 +61,19 @@ export default function Orders() {
 
 interface PickCustomer { id: string; name: string; whatsapp: string | null; phone: string | null; }
 interface PickVariant { id: string; size: string | null; color: string | null; price_delta: number | null; is_active?: boolean; }
-interface PickProduct { id: string; name: string; sku: string | null; price_cash: number | null; product_variants?: PickVariant[]; }
+interface PickProduct { id: string; name: string; sku: string | null; price_cash: number | null; images?: string[] | null; product_variants?: PickVariant[]; }
 /* variant = tamanho/cor. O servidor cobra price_cash + price_delta e rotula o item
    como "Nome — RN", entao a linha precisa carregar a variante escolhida. */
 interface Line { product: PickProduct; variant: PickVariant | null; quantity: number; }
+
+function ProdThumb({ url }: { url?: string | null }) {
+  const [src, setSrc] = useState(url ? thumbSrc(url) : '');
+  if (!url) return <span className="prod-thumb prod-thumb-empty" aria-hidden="true" />;
+  return (
+    <img className="prod-thumb" src={src} alt="" loading="lazy" decoding="async"
+      onError={() => { const cheia = displaySrc(url); if (src !== cheia) setSrc(cheia); }} />
+  );
+}
 
 function activeVariants(p: PickProduct): PickVariant[] {
   return (p.product_variants ?? []).filter((v) => v.is_active !== false);
@@ -165,7 +174,13 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
         <h3>Itens</h3>
         <div className="picker">
           <input placeholder="Buscar produto ativo…" value={prodQuery} onChange={(e) => searchProducts(e.target.value)} />
-          {prodResults.map((p) => <button key={p.id} className="picker-opt" onClick={() => addLine(p)}>{p.name} <span className="muted">{p.price_cash != null ? formatBRL(p.price_cash) : ''}</span></button>)}
+          {prodResults.map((p) => (
+            <button key={p.id} className="picker-opt with-thumb" onClick={() => addLine(p)}>
+              <ProdThumb key={p.id} url={p.images?.[0]} />
+              <span style={{ flex: 1 }}>{p.name}</span>
+              <span className="muted">{p.price_cash != null ? formatBRL(p.price_cash) : ''}</span>
+            </button>
+          ))}
         </div>
         {lines.length === 0 && <p className="muted">Nenhum item adicionado.</p>}
         {lines.map((l, i) => {
@@ -173,6 +188,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
           return (
             <div className="order-line" key={l.product.id + '-' + (l.variant?.id ?? 'sem') + '-' + i}>
               <div className="row-inline">
+                <ProdThumb key={l.product.id} url={l.product.images?.[0]} />
                 <span style={{ flex: 1 }}>{l.product.name}</span>
                 <input type="number" min={1} value={l.quantity} style={{ width: 70 }}
                   onChange={(e) => setLines((cur) => cur.map((x, j) => j === i ? { ...x, quantity: Math.max(1, parseInt(e.target.value) || 1) } : x))} />
