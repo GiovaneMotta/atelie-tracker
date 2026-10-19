@@ -137,7 +137,10 @@ export const handler: Handler = withHttp(async (event) => {
 
     // 2) Campos simples (recalcula total se desconto/frete mudarem).
     const fields: Record<string, unknown> = {};
-    for (const k of ['notes', 'address_id', 'payment_method', 'payment_status']) if (k in body) fields[k] = body[k];
+    /* customer_id entra aqui porque um pedido manual pode nascer sem cliente
+       (o do site sempre tem um) e, sem isso, nunca mais ganharia um - e sem
+       cliente nao ha endereco, logo nao ha etiqueta nem entrega. */
+    for (const k of ['notes', 'address_id', 'customer_id', 'payment_method', 'payment_status']) if (k in body) fields[k] = body[k];
     if ('discount' in body || 'shipping_cost' in body) {
       const discount = round2('discount' in body ? Number(body.discount) || 0 : Number(before.discount));
       const shipping = round2('shipping_cost' in body ? Number(body.shipping_cost) || 0 : Number(before.shipping_cost));

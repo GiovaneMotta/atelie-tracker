@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { formatBRL, formatDate, formatDateTime, ORDER_STATUS, NEXT_STATUS } from '../lib/format';
 import OrderAddress, { Address, enderecoCompleto } from '../components/OrderAddress';
 import OrderPayment from '../components/OrderPayment';
+import OrderCustomer from '../components/OrderCustomer';
 
 interface Item { id: string; name: string; sku: string | null; quantity: number; unit_price: number; line_total: number;
   addons: { name: string; price: number }[]; customization?: Record<string, unknown> | null; }
@@ -217,12 +218,7 @@ export default function OrderDetail() {
         </div>
 
         <div>
-          <div className="card">
-            <h3>Cliente</h3>
-            {order.customer
-              ? <p><Link to={`/clientes/${order.customer.id}`}>{order.customer.name}</Link><br /><span className="muted">{order.customer.whatsapp || ''}</span></p>
-              : <p className="muted">Sem cliente vinculado.</p>}
-          </div>
+          <OrderCustomer orderId={order.id} customer={order.customer} onChanged={load} />
           <OrderAddress orderId={order.id} customerId={order.customer?.id ?? null}
             address={order.address} onChanged={load} />
           <OrderPayment orderId={order.id} status={order.status}
