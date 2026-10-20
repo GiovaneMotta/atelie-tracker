@@ -111,7 +111,12 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
   });
   const [images, setImages] = useState<string[]>(product?.images || []);
   const [featured, setFeatured] = useState<boolean>(!!product?.featured);
-  const [categories, setCategories] = useState<string[]>((product?.product_categories || []).map((c) => c.category));
+  const [categories, setCategories] = useState<string[]>(
+    (product?.product_categories || []).map((c) => c.category).filter((c) => !c.startsWith('modelo:')));
+  /* O modelo mora numa categoria com prefixo: reaproveita o que ja existe
+     e chega ao site sem mexer na funcao public_catalog. */
+  const [modelo, setModelo] = useState<string>(
+    ((product?.product_categories || []).find((c) => c.category.startsWith('modelo:'))?.category || '').replace('modelo:', ''));
   const [variants, setVariants] = useState<Variant[]>(product?.product_variants || []);
   const [addons, setAddons] = useState<Addon[]>(product?.product_addons || []);
   const [busy, setBusy] = useState(false);
@@ -134,7 +139,8 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
       width_cm: f.width_cm ? parseBRL(f.width_cm) : null,
       height_cm: f.height_cm ? parseBRL(f.height_cm) : null,
       description: f.description || null,
-      featured, images, categories,
+      featured, images,
+      categories: modelo.trim() ? [...categories, 'modelo:' + modelo.trim().toLowerCase()] : categories,
       variants: variants.map((v) => ({ ...v, price_delta: parseBRL(v.price_delta) })),
       addons: addons.map((a) => ({ ...a, price: parseBRL(a.price) })),
     };
@@ -241,6 +247,17 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
                 <span className="track" /><span className="switch-label">Produto em destaque (vitrine “Favoritas” da home)</span>
               </label>
               <p className="muted small" style={{ marginTop: 12 }}>Use <strong>Oculto</strong> para tirar do site sem apagar o produto.</p>
+            </div>
+
+            <div className="card">
+              <h3>Modelo</h3>
+              <label className="field"><span>Nome do modelo (agrupa as cores)</span>
+                <input value={modelo} onChange={(e) => setModelo(e.target.value)}
+                  placeholder="ex.: petala — deixe vazio se a peça não tem outras cores" /></label>
+              <p className="muted small">
+                Peças com o mesmo modelo viram as bolinhas de “outras cores” na página do produto.
+                Use sempre a mesma palavra, sem acento, em todas as cores do conjunto.
+              </p>
             </div>
 
             <div className="card">
