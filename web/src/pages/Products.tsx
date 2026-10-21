@@ -3,14 +3,40 @@ import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { formatBRL, parseBRL, displaySrc } from '../lib/format';
 
-interface Variant { id?: string; size: string; color: string; gender: string; price_delta: number | string; }
-interface Addon { id?: string; name: string; price: number | string; requires_text: boolean; }
+interface InvRow { variant_id: string | null; quantity: number; reserved: number; }
+interface Variant {
+  id?: string; size: string; color: string; gender: string; price_delta: number | string;
+  /* contagem daquele tamanho; vazio = tamanho sem controle de estoque */
+  stock?: number | string; inventory?: InvRow[];
+}
+interface Addon {
+  id?: string; name: string; price: number | string; requires_text: boolean;
+  /* produto que o adicional consome do estoque (null = só preço, ex.: bordar nome) */
+  addon_product_id?: string | null;
+}
+interface Component {
+  id?: string; child_product_id: string; child_variant_id?: string | null;
+  match_size?: boolean; quantity: number | string;
+}
 interface Product {
   id: string; sku: string | null; name: string; slug?: string | null; description: string | null;
   price_cash: number | null; price_card: number | null; original_price?: number | null; installments_max?: number | null; status: string;
   weight_kg: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null;
   featured?: boolean; images: string[]; product_categories?: { category: string }[];
   product_variants?: Variant[]; product_addons?: Addon[];
+  product_components?: Component[]; inventory?: InvRow[];
+}
+
+/** Contagem gravada para a peça inteira (a linha sem variação). */
+function estoqueDoProduto(p: Product | null): string {
+  const linha = (p?.inventory || []).find((i) => i.variant_id === null);
+  return linha ? String(linha.quantity) : '';
+}
+
+/** Contagem gravada para um tamanho. */
+function estoqueDaVariacao(v: Variant): string {
+  const linha = (v.inventory || [])[0];
+  return linha ? String(linha.quantity) : '';
 }
 
 /** "aurora rosê" -> "aurora-rose" (slug amigável p/ URL) */
@@ -117,8 +143,20 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
      e chega ao site sem mexer na funcao public_catalog. */
   const [modelo, setModelo] = useState<string>(
     ((product?.product_categories || []).find((c) => c.category.startsWith('modelo:'))?.category || '').replace('modelo:', ''));
-  const [variants, setVariants] = useState<Variant[]>(product?.product_variants || []);
+  const [variants, setVariants] = useState<Variant[]>(
+    (product?.product_variants || []).map((v) => ({ ...v, stock: estoqueDaVariacao(v) })));
   const [addons, setAddons] = useState<Addon[]>(product?.product_addons || []);
+  const [components, setComponents] = useState<Component[]>(product?.product_components || []);
+  /* Estoque da peça inteira. Só vale quando ela não tem tamanhos: com
+     tamanhos, quem manda é a contagem de cada linha de Variações. */
+  const [stockProduto, setStockProduto] = useState<string>(estoqueDoProduto(product));
+  /* catálogo para escolher componente e produto do adicional */
+  const [catalogo, setCatalogo] = useState<{ id: string; name: string; sku: string | null }[]>([]);
+  useEffect(() => {
+    apiFetch<{ products: Product[] }>('/api/products')
+      .then((r) => setCatalogo((r.products || []).map((p) => ({ id: p.id, name: p.name, sku: p.sku }))))
+      .catch(() => {});
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -141,8 +179,21 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
       description: f.description || null,
       featured, images,
       categories: modelo.trim() ? [...categories, 'modelo:' + modelo.trim().toLowerCase()] : categories,
-      variants: variants.map((v) => ({ ...v, price_delta: parseBRL(v.price_delta) })),
+      variants: variants.map((v) => ({
+        id: v.id, size: v.size, color: v.color, gender: v.gender,
+        price_delta: parseBRL(v.price_delta),
+        stock: String(v.stock ?? '').trim(),
+      })),
+      /* peça com tamanhos conta por tamanho; sem tamanhos, conta inteira */
+      stock: variants.length ? '' : stockProduto.trim(),
       addons: addons.map((a) => ({ ...a, price: parseBRL(a.price) })),
+      components: components
+        .filter((c) => c.child_product_id)
+        .map((c) => ({
+          child_product_id: c.child_product_id,
+          match_size: c.match_size !== false,
+          quantity: Math.max(1, Math.round(Number(c.quantity) || 1)),
+        })),
     };
   }
 
@@ -282,6 +333,11 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
 
             <div className="card">
               <h3>Variações</h3>
+              <p className="muted small">
+                Um tamanho por linha. <strong>+/- R$</strong> é a diferença de preço daquele
+                tamanho (deixe 0 se for o mesmo preço) e <strong>Estoque</strong> é quantas
+                peças você tem. Estoque vazio = tamanho sem controle, vende sem limite.
+              </p>
               {variants.map((v, i) => (
                 <div className="row-inline" key={i}>
                   <input placeholder="Tamanho" value={v.size} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, size: e.target.value } : x))} />
@@ -290,19 +346,74 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
                     <option value="">—</option><option value="menina">menina</option><option value="menino">menino</option><option value="unissex">unissex</option>
                   </select>
                   <input placeholder="+/- R$" value={v.price_delta} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, price_delta: e.target.value } : x))} />
+                  <input placeholder="Estoque" inputMode="numeric" value={v.stock ?? ''} onChange={(e) => setVariants((cur) => cur.map((x, j) => j === i ? { ...x, stock: e.target.value } : x))} />
                   <button type="button" className="btn-link" onClick={() => setVariants((cur) => cur.filter((_, j) => j !== i))}>✕</button>
                 </div>
               ))}
-              <button type="button" className="btn btn-ghost" onClick={() => setVariants((cur) => [...cur, { size: '', color: '', gender: '', price_delta: 0 }])}>+ Variação</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setVariants((cur) => [...cur, { size: '', color: '', gender: '', price_delta: 0, stock: '' }])}>+ Variação</button>
+            </div>
+
+            {variants.length === 0 && (
+              <div className="card">
+                <h3>Estoque</h3>
+                <label className="field"><span>Quantas peças você tem</span>
+                  <input value={stockProduto} inputMode="numeric" placeholder="deixe vazio para vender sem controle"
+                    onChange={(e) => setStockProduto(e.target.value)} /></label>
+                <p className="muted small">
+                  Assim que você cadastrar tamanhos em Variações, a contagem passa a ser por
+                  tamanho e este campo some — RN e P são peças diferentes.
+                </p>
+              </div>
+            )}
+
+            <div className="card">
+              <h3>Composição</h3>
+              <p className="muted small">
+                Só para kit: liste as peças que saem do estoque quando este produto é vendido.
+                O kit não tem contagem própria — quem manda são as peças de dentro, e o
+                disponível é quantas vezes dá para montar.
+              </p>
+              {components.map((c, i) => (
+                <div className="row-inline" key={i}>
+                  <select value={c.child_product_id}
+                    onChange={(e) => setComponents((cur) => cur.map((x, j) => j === i ? { ...x, child_product_id: e.target.value } : x))}>
+                    <option value="">— escolha a peça —</option>
+                    {catalogo.filter((p) => p.id !== product?.id).map((p) => (
+                      <option key={p.id} value={p.id}>{p.sku ? p.sku + ' · ' : ''}{p.name}</option>
+                    ))}
+                  </select>
+                  <input placeholder="Qtd" inputMode="numeric" value={c.quantity}
+                    onChange={(e) => setComponents((cur) => cur.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))} />
+                  <label className="field-check">
+                    <input type="checkbox" checked={c.match_size !== false}
+                      onChange={(e) => setComponents((cur) => cur.map((x, j) => j === i ? { ...x, match_size: e.target.checked } : x))} />
+                    <span>mesmo tamanho</span>
+                  </label>
+                  <button type="button" className="btn-link" onClick={() => setComponents((cur) => cur.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-ghost"
+                onClick={() => setComponents((cur) => [...cur, { child_product_id: '', quantity: 1, match_size: true }])}>+ Peça do kit</button>
             </div>
 
             <div className="card">
               <h3>Adicionais / personalizações</h3>
-              <p className="muted small">Ex.: "Bordar nome" — R$ 19,90.</p>
+              <p className="muted small">
+                Ex.: "Bordar nome" — R$ 19,90. Se o adicional for uma peça de verdade
+                (um body, um sapatinho), escolha o produto: assim ele baixa do estoque
+                dele quando a cliente marca. Serviço, como bordado, fica sem produto.
+              </p>
               {addons.map((a, i) => (
                 <div className="row-inline" key={i}>
                   <input placeholder="Nome do adicional" value={a.name} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
                   <input placeholder="R$" value={a.price} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, price: e.target.value } : x))} />
+                  <select value={a.addon_product_id || ''}
+                    onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, addon_product_id: e.target.value || null } : x))}>
+                    <option value="">sem estoque (serviço)</option>
+                    {catalogo.filter((p) => p.id !== product?.id).map((p) => (
+                      <option key={p.id} value={p.id}>{p.sku ? p.sku + ' · ' : ''}{p.name}</option>
+                    ))}
+                  </select>
                   <label className="field-check">
                     <input type="checkbox" checked={a.requires_text} onChange={(e) => setAddons((cur) => cur.map((x, j) => j === i ? { ...x, requires_text: e.target.checked } : x))} />
                     <span>pede texto</span>
@@ -310,7 +421,7 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
                   <button type="button" className="btn-link" onClick={() => setAddons((cur) => cur.filter((_, j) => j !== i))}>✕</button>
                 </div>
               ))}
-              <button type="button" className="btn btn-ghost" onClick={() => setAddons((cur) => [...cur, { name: '', price: 0, requires_text: false }])}>+ Adicional</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setAddons((cur) => [...cur, { name: '', price: 0, requires_text: false, addon_product_id: null }])}>+ Adicional</button>
             </div>
           </div>
 

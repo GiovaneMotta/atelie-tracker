@@ -14,7 +14,10 @@ import { requirePermission } from '../lib/auth';
 import { admin } from '../lib/supabaseAdmin';
 import { writeAudit } from '../lib/audit';
 
-const NESTED = 'product_categories(category), product_variants(*), product_addons(*)';
+const NESTED = 'product_categories(category), product_addons(*), '
+  + 'product_variants(*, inventory(variant_id, quantity, reserved)), '
+  + 'inventory(variant_id, quantity, reserved), '
+  + 'product_components!product_components_parent_product_id_fkey(*)';
 
 const PRODUCT_FIELDS = ['sku', 'name', 'slug', 'category', 'description', 'price_cash',
   'price_card', 'installments_max', 'original_price', 'weight_kg', 'length_cm', 'width_cm',
@@ -35,20 +38,94 @@ async function syncNested(productId: string, body: Record<string, unknown>) {
     if (rows.length) await sb.from('product_categories').insert(rows);
   }
   if (Array.isArray(body.variants)) {
-    await sb.from('product_variants').delete().eq('product_id', productId);
-    const rows = (body.variants as any[]).map((v) => ({
-      product_id: productId, sku: v.sku || null, size: v.size || null, color: v.color || null,
-      gender: v.gender || null, price_delta: Number(v.price_delta) || 0, is_active: v.is_active !== false,
-    }));
-    if (rows.length) await sb.from('product_variants').insert(rows);
+    /* Aqui NAO da para apagar e recriar, como o resto faz: inventory
+       aponta para a variação com ON DELETE CASCADE, e order_items guarda
+       o variant_id do que já foi vendido. Recriar perderia o estoque por
+       tamanho a cada "Salvar" e desligaria o tamanho dos pedidos antigos.
+       Então: casa pelo id (ou por tamanho+cor, para quem foi cadastrado
+       antes de o formulário mandar o id), atualiza o que já existe e só
+       apaga o que a Lili tirou da lista de verdade. */
+    const { data: atuais } = await sb.from('product_variants')
+      .select('id, size, color').eq('product_id', productId);
+    const antigas = atuais ?? [];
+    const chave = (s: unknown, c: unknown) =>
+      `${String(s || '').trim().toUpperCase()}|${String(c || '').trim().toLowerCase()}`;
+    const porId = new Map(antigas.map((v) => [v.id, v]));
+    const porChave = new Map(antigas.map((v) => [chave(v.size, v.color), v]));
+    const mantidas = new Set<string>();
+
+    for (const v of body.variants as any[]) {
+      const campos = {
+        sku: v.sku || null, size: v.size || null, color: v.color || null,
+        gender: v.gender || null, price_delta: Number(v.price_delta) || 0,
+        is_active: v.is_active !== false,
+      };
+      const alvo = (v.id && porId.get(v.id)) || porChave.get(chave(v.size, v.color));
+      let variantId: string | null = null;
+      if (alvo) {
+        await sb.from('product_variants').update(campos).eq('id', alvo.id);
+        variantId = alvo.id;
+      } else {
+        const { data: nova } = await sb.from('product_variants')
+          .insert({ product_id: productId, ...campos }).select('id').single();
+        variantId = nova?.id ?? null;
+      }
+      if (variantId) {
+        mantidas.add(variantId);
+        if (v.stock !== undefined && v.stock !== null && String(v.stock).trim() !== '') {
+          await gravarEstoque(productId, variantId, Number(v.stock));
+        }
+      }
+    }
+
+    const sobraram = antigas.filter((v) => !mantidas.has(v.id)).map((v) => v.id);
+    if (sobraram.length) await sb.from('product_variants').delete().in('id', sobraram);
   }
+
+  /* Estoque da peça sem variação: um número só, direto no produto. */
+  if (body.stock !== undefined && body.stock !== null && String(body.stock).trim() !== '') {
+    await gravarEstoque(productId, null, Number(body.stock));
+  }
+
   if (Array.isArray(body.addons)) {
     await sb.from('product_addons').delete().eq('product_id', productId);
     const rows = (body.addons as any[]).map((a) => ({
       product_id: productId, name: String(a.name || '').slice(0, 120), price: Number(a.price) || 0,
       requires_text: Boolean(a.requires_text), is_active: a.is_active !== false,
+      /* adicional ligado a um produto consome o estoque dele (0021) */
+      addon_product_id: a.addon_product_id || null,
     })).filter((r) => r.name);
     if (rows.length) await sb.from('product_addons').insert(rows);
+  }
+
+  if (Array.isArray(body.components)) {
+    await sb.from('product_components').delete().eq('parent_product_id', productId);
+    const rows = (body.components as any[]).map((c) => ({
+      parent_product_id: productId,
+      parent_variant_id: c.parent_variant_id || null,
+      child_product_id: c.child_product_id || null,
+      child_variant_id: c.child_variant_id || null,
+      match_size: c.match_size !== false,
+      quantity: Math.max(1, Math.round(Number(c.quantity) || 1)),
+    })).filter((r) => r.child_product_id && r.child_product_id !== productId);
+    if (rows.length) await sb.from('product_components').insert(rows);
+  }
+}
+
+/** Grava a contagem de uma peça (ou de um tamanho) sem tocar no reservado. */
+async function gravarEstoque(productId: string, variantId: string | null, valor: number) {
+  const sb = admin();
+  const qtd = Math.max(0, Math.round(Number.isFinite(valor) ? valor : 0));
+  const busca = sb.from('inventory').select('id, quantity');
+  const { data: existente } = variantId
+    ? await busca.eq('variant_id', variantId).maybeSingle()
+    : await busca.eq('product_id', productId).is('variant_id', null).maybeSingle();
+
+  if (existente) {
+    if (Number(existente.quantity) === qtd) return;
+    await sb.from('inventory').update({ quantity: qtd }).eq('id', existente.id);
+  } else {
+    await sb.from('inventory').insert({ product_id: productId, variant_id: variantId, quantity: qtd });
   }
 }
 
