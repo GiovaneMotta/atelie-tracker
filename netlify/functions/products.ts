@@ -14,7 +14,12 @@ import { requirePermission } from '../lib/auth';
 import { admin } from '../lib/supabaseAdmin';
 import { writeAudit } from '../lib/audit';
 
-const NESTED = 'product_categories(category), product_addons(*), '
+/* Desde a 0021 ha DOIS caminhos de products para product_addons (o dono do
+   adicional e o produto que ele consome) e dois para product_components
+   (pai e filho). Sem dizer por qual chave embutir, o PostgREST recusa a
+   consulta inteira e a tela de Produtos fica vazia. */
+const NESTED = 'product_categories(category), '
+  + 'product_addons!product_addons_product_id_fkey(*), '
   + 'product_variants(*, inventory(variant_id, quantity, reserved)), '
   + 'inventory(variant_id, quantity, reserved), '
   + 'product_components!product_components_parent_product_id_fkey(*)';
