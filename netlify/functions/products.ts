@@ -50,8 +50,14 @@ async function syncNested(productId: string, body: Record<string, unknown>) {
        Então: casa pelo id (ou por tamanho+cor, para quem foi cadastrado
        antes de o formulário mandar o id), atualiza o que já existe e só
        apaga o que a Lili tirou da lista de verdade. */
+    /* So as ATIVAS entram nesta conta. Variação desativada e historico:
+       ela sai da vitrine mas continua presa a pedidos antigos e a uma
+       linha de estoque. Se entrasse aqui, salvar o produto a traria de
+       volta (o formulario nao manda is_active) ou a apagaria junto com
+       o estoque dela. Foi o que aconteceu com duas pecas depois da
+       0022: o "P" desativado voltou a aparecer no site. */
     const { data: atuais } = await sb.from('product_variants')
-      .select('id, size, color').eq('product_id', productId);
+      .select('id, size, color').eq('product_id', productId).eq('is_active', true);
     const antigas = atuais ?? [];
     const chave = (s: unknown, c: unknown) =>
       `${String(s || '').trim().toUpperCase()}|${String(c || '').trim().toLowerCase()}`;
@@ -63,7 +69,7 @@ async function syncNested(productId: string, body: Record<string, unknown>) {
       const campos = {
         sku: v.sku || null, size: v.size || null, color: v.color || null,
         gender: v.gender || null, price_delta: Number(v.price_delta) || 0,
-        is_active: v.is_active !== false,
+        is_active: true,   /* esta na lista do formulario = esta em uso */
       };
       const alvo = (v.id && porId.get(v.id)) || porChave.get(chave(v.size, v.color));
       let variantId: string | null = null;
@@ -83,8 +89,14 @@ async function syncNested(productId: string, body: Record<string, unknown>) {
       }
     }
 
+    /* Tamanho tirado da lista e DESATIVADO, nunca apagado: apagar
+       levaria junto o variant_id dos pedidos ja feitos e a linha de
+       estoque dele (ON DELETE CASCADE). Desativado, some do site e do
+       painel e o historico fica inteiro. */
     const sobraram = antigas.filter((v) => !mantidas.has(v.id)).map((v) => v.id);
-    if (sobraram.length) await sb.from('product_variants').delete().in('id', sobraram);
+    if (sobraram.length) {
+      await sb.from('product_variants').update({ is_active: false }).in('id', sobraram);
+    }
   }
 
   /* Estoque da peça sem variação: um número só, direto no produto. */

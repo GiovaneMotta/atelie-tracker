@@ -6,6 +6,7 @@ import { formatBRL, parseBRL, displaySrc } from '../lib/format';
 interface InvRow { variant_id: string | null; quantity: number; reserved: number; }
 interface Variant {
   id?: string; size: string; color: string; gender: string; price_delta: number | string;
+  is_active?: boolean;
   /* contagem daquele tamanho; vazio = tamanho sem controle de estoque */
   stock?: number | string; inventory?: InvRow[];
 }
@@ -144,7 +145,9 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
   const [modelo, setModelo] = useState<string>(
     ((product?.product_categories || []).find((c) => c.category.startsWith('modelo:'))?.category || '').replace('modelo:', ''));
   const [variants, setVariants] = useState<Variant[]>(
-    (product?.product_variants || []).map((v) => ({ ...v, stock: estoqueDaVariacao(v) })));
+    /* desativada = historico: nao aparece no formulario */
+    (product?.product_variants || []).filter((v) => v.is_active !== false)
+      .map((v) => ({ ...v, stock: estoqueDaVariacao(v) })));
   const [addons, setAddons] = useState<Addon[]>(product?.product_addons || []);
   const [components, setComponents] = useState<Component[]>(product?.product_components || []);
   /* Estoque da peça inteira. Só vale quando ela não tem tamanhos: com
