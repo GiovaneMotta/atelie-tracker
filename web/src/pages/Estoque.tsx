@@ -4,8 +4,13 @@ import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 
 interface Item {
-  product_id: string; name: string; sku: string | null; image: string | null;
+  /* uma linha por unidade de contagem: por tamanho quando a peca tem
+     tamanhos, senao a peca inteira */
+  key: string; product_id: string; variant_id: string | null; size: string | null;
+  name: string; sku: string | null; image: string | null;
   quantity: number; min_qty: number; reserved: number; tracked: boolean;
+  /* kit: nao se conta, o que existe sai das pecas de dentro */
+  composto: boolean;
   status: 'esgotado' | 'baixo' | 'ok';
 }
 interface Summary { esgotados: number; baixo: number; ok: number; total: number; }
@@ -41,6 +46,7 @@ export default function Estoque() {
   const term = q.trim().toLowerCase();
   const filtered = items.filter((i) =>
     (!term || i.name.toLowerCase().includes(term) || (i.sku || '').toLowerCase().includes(term)) &&
+    (!i.composto || !statusF) &&
     (!statusF || i.status === statusF));
 
   return (
@@ -69,18 +75,28 @@ export default function Estoque() {
 
       <div className="card table-card">
         <table className="table">
-          <thead><tr><th></th><th>Produto</th><th>SKU</th><th className="right">Atual</th><th className="right">Mínimo</th><th>Status</th>{writable && <th></th>}</tr></thead>
+          <thead><tr><th></th><th>Produto</th><th>SKU</th><th>Tamanho</th><th className="right">Atual</th><th className="right">Reservado</th><th className="right">Mínimo</th><th>Status</th>{writable && <th></th>}</tr></thead>
           <tbody>
-            {!loading && filtered.length === 0 && <tr><td colSpan={writable ? 7 : 6} className="muted center">Nenhum produto encontrado.</td></tr>}
+            {!loading && filtered.length === 0 && <tr><td colSpan={writable ? 9 : 8} className="muted center">Nenhum produto encontrado.</td></tr>}
             {filtered.map((i) => (
-              <tr key={i.product_id}>
+              <tr key={i.key}>
                 <td>{i.image ? <img src={src(i.image)} alt="" style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'cover', display: 'block' }} loading="lazy" /> : <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--cream-2)' }} />}</td>
                 <td><strong>{i.name}</strong></td>
                 <td className="mono">{i.sku || '—'}</td>
-                <td className="right mono">{i.tracked ? i.quantity : '—'}</td>
-                <td className="right mono">{i.tracked ? i.min_qty : '—'}</td>
-                <td><span className={STATUS[i.status].pill}>{STATUS[i.status].label}</span></td>
-                {writable && <td className="right"><button className="btn btn-ghost btn-sm" onClick={() => setEdit(i)}>Ajustar</button></td>}
+                <td className="mono">{i.size || (i.composto ? '' : 'único')}</td>
+                {i.composto ? (
+                  <td colSpan={4} className="muted small">
+                    Kit — o que existe sai das peças de dentro. Conte cada peça na linha dela.
+                  </td>
+                ) : (
+                  <>
+                    <td className="right mono">{i.tracked ? i.quantity : '—'}</td>
+                    <td className="right mono">{i.tracked && i.reserved > 0 ? i.reserved : '—'}</td>
+                    <td className="right mono">{i.tracked ? i.min_qty : '—'}</td>
+                    <td><span className={STATUS[i.status].pill}>{STATUS[i.status].label}</span></td>
+                  </>
+                )}
+                {writable && <td className="right">{!i.composto && <button className="btn btn-ghost btn-sm" onClick={() => setEdit(i)}>Ajustar</button>}</td>}
               </tr>
             ))}
           </tbody>
@@ -109,6 +125,7 @@ function AdjustModal({ item, onClose, onSaved }: { item: Item; onClose: () => vo
         method: 'POST',
         body: JSON.stringify({
           product_id: item.product_id,
+          variant_id: item.variant_id,
           delta: Number.isFinite(d) ? d : 0,
           min_qty: parseInt(min, 10) || 0,
           reason: reason || (Number.isFinite(d) && d !== 0 ? (d > 0 ? 'Entrada manual' : 'Saída manual') : 'Ajuste de mínimo'),
@@ -122,7 +139,7 @@ function AdjustModal({ item, onClose, onSaved }: { item: Item; onClose: () => vo
     <div className="modal-scrim" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>Ajustar estoque</h3>
-        <p className="muted small" style={{ marginTop: -8, marginBottom: 14 }}>{item.name} · atual <strong>{item.tracked ? item.quantity : 0}</strong></p>
+        <p className="muted small" style={{ marginTop: -8, marginBottom: 14 }}>{item.name}{item.size ? ' · tamanho ' + item.size : ''} · atual <strong>{item.tracked ? item.quantity : 0}</strong>{item.reserved > 0 ? <> · <strong>{item.reserved}</strong> reservado(s) em pedidos</> : null}</p>
         {error && <div className="alert-error">{error}</div>}
         <label className="field"><span>Entrada (+) ou saída (−)</span>
           <input value={delta} onChange={(e) => setDelta(e.target.value)} placeholder="ex.: 10 ou -3" inputMode="numeric" /></label>
