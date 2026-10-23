@@ -11,9 +11,9 @@ const AREAS: Area[] = [
   { icon: Building2, title: 'Geral', desc: 'Dados da loja, contato, horário e informações da empresa.' },
   { icon: CreditCard, title: 'Pagamento', desc: 'InfinitePay — chaves, métodos e confirmação por webhook.' },
   { icon: Truck, title: 'Frete', desc: 'Frenet — origem, token e serviços de entrega.', to: '/config/frenet', ready: true },
-  { icon: Megaphone, title: 'Marketing e rastreamento', desc: 'Meta Pixel, GA4, GTM e geração de UTMs.' },
-  { icon: Search, title: 'SEO', desc: 'Título, descrição, Open Graph e indexação.' },
-  { icon: Globe, title: 'Site / Conteúdo', desc: 'Textos, banners, vitrines e informações do site.', to: '/site/conteudo' },
+  { icon: Megaphone, title: 'Marketing e rastreamento', desc: 'Meta Pixel, GA4, GTM e geração de UTMs.', to: '/marketing', ready: true },
+  { icon: Search, title: 'SEO', desc: 'Título, descrição, Open Graph e indexação.', to: '/site/seo', ready: true },
+  { icon: Globe, title: 'Site / Conteúdo', desc: 'Textos, banners, vitrines e informações do site.', to: '/site/conteudo', ready: true },
   { icon: Users, title: 'Usuários e permissões', desc: 'Equipe, papéis e acessos (admin, atendente, expedição, financeiro).' },
   { icon: Bell, title: 'Notificações', desc: 'Alertas de novo pedido, pagamento, estoque e integrações.' },
 ];
