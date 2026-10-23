@@ -87,13 +87,13 @@ create index if not exists idx_orders_reserva_vencendo
 --       pago e dai em diante                -> BAIXA
 -- ---------------------------------------------------------------------
 create or replace function public.inventory_fase(p_status text)
-returns text language sql immutable as $
+returns text language sql immutable as $$
   select case
     when p_status in ('rascunho', 'em_atendimento', 'cancelado') then 'nenhum'
     when p_status = 'aguardando_pagamento'                       then 'reservado'
     else 'baixado'
   end;
-$;
+$$;
 
 -- Prazo da reserva, configuravel sem mexer em codigo.
 -- 2880 minutos = 48h: conversa de WhatsApp nao tem a pressa de um
@@ -176,7 +176,7 @@ $$;
 --     separada para aquela cliente. E so ai que o prazo passa a correr.
 -- ---------------------------------------------------------------------
 create or replace function public.trg_order_fase() returns trigger
-language plpgsql as $
+language plpgsql as $$
 declare v_min integer;
 begin
   if tg_op = 'INSERT' or new.status is distinct from old.status then
@@ -193,7 +193,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 -- ---------------------------------------------------------------------
 -- 4) Devolver a prateleira o que ninguem pagou
