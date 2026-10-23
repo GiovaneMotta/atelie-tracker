@@ -20,6 +20,7 @@ export function formatDate(iso: string | null | undefined): string {
 
 export const ORDER_STATUS: Record<string, string> = {
   rascunho: 'Rascunho',
+  em_atendimento: 'Em atendimento',
   aguardando_pagamento: 'Aguardando pagamento',
   pago: 'Pago',
   aguardando_endereco: 'Aguardando endereço',
@@ -106,7 +107,10 @@ export const SHIPMENT_TIMELINE = [
 
 /** Próximos status válidos a partir do atual (espelha a máquina de estados do banco §53). */
 export const NEXT_STATUS: Record<string, string[]> = {
-  rascunho: ['aguardando_pagamento', 'cancelado'],
+  /* Reservar a peca acontece ao entrar em 'aguardando_pagamento'.
+     'em_atendimento' existe para a conversa que ainda nao fechou. */
+  rascunho: ['em_atendimento', 'aguardando_pagamento', 'cancelado'],
+  em_atendimento: ['aguardando_pagamento', 'cancelado'],
   aguardando_pagamento: ['pago', 'cancelado'],
   pago: ['aguardando_endereco', 'aguardando_etiqueta', 'cancelado'],
   aguardando_endereco: ['aguardando_etiqueta', 'cancelado'],
