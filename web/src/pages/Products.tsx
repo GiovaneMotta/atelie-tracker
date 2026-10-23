@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { formatBRL, parseBRL, displaySrc } from '../lib/format';
+import FichaEditor from '../components/FichaEditor';
 
 interface InvRow { variant_id: string | null; quantity: number; reserved: number; }
 interface Variant {
@@ -266,23 +267,11 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
                 <label className="field"><span>Preço no cartão (R$)</span><input value={f.price_card} onChange={(e) => set('price_card', e.target.value)} placeholder="369,00" /></label>
                 <label className="field"><span>Preço "de" / promocional (R$)</span><input value={f.original_price} onChange={(e) => set('original_price', e.target.value)} placeholder="opcional — mostra riscado" /></label>
                 <label className="field"><span>Parcelas (máx.)</span><input value={f.installments_max} onChange={(e) => set('installments_max', e.target.value)} placeholder="6" inputMode="numeric" /></label>
-                <label className="field span-all"><span>Descrição e ficha do produto</span>
-                  <textarea rows={14} className="editor-ficha" value={f.description}
-                    onChange={(e) => set('description', e.target.value)}
-                    placeholder={"Conte os detalhes da peça: tecido, bordado, acabamento…\n\nDepois use o botão abaixo para acrescentar a ficha."} />
-                  <div className="ficha-ajuda">
-                    <button type="button" className="btn btn-ghost btn-sm"
-                      onClick={() => set('description', (f.description || '').trimEnd() + '\n' + MODELO_FICHA)}
-                      disabled={busy || (f.description || '').includes('## ')}>
-                      + Inserir modelo da ficha
-                    </button>
-                    <span className="muted small">
-                      Cada <b>## Título</b> vira uma aba no site. Linhas <b>Rótulo: valor</b> viram a
-                      grade de características, linhas com <b>-</b> viram lista, e <b>Prazo de produção</b>
-                      aparece como selo ao lado dos tamanhos.
-                    </span>
-                  </div>
-                </label>
+                <div className="field span-all">
+                  <span>Descrição e ficha do produto</span>
+                  <FichaEditor value={f.description} disabled={busy}
+                    onChange={(v) => set('description', v)} />
+                </div>
               </div>
             </div>
 
@@ -453,21 +442,6 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
    "##" vira o paragrafo ao lado da foto, cada "## Titulo" vira uma aba,
    linhas "Rotulo: valor" viram a grade de caracteristicas e linhas com
    "-" viram lista. "Prazo de producao" vira selo ao lado dos tamanhos. */
-const MODELO_FICHA = [
-  '',
-  '## Contém',
-  '- 01 Vestido em tricô',
-  '- 01 Manta personalizada com o nome do bebê',
-  '',
-  '## Características',
-  'Tecido: Tricô',
-  'Acabamento: Bordado à mão',
-  'Medidas: Manta 00cm x 00cm',
-  'Tamanhos: RN e P',
-  'Prazo de produção: 00 dias úteis',
-  'Cuidados: Lavar à mão com sabão neutro, secar à sombra',
-].join('\n');
-
 /** Prefixa imagens antigas (caminho relativo "images/...") com a origem do
  *  site para que apareçam no painel; URLs completas (Storage) passam direto. */
 function isStorageUrl(u: string): boolean {
