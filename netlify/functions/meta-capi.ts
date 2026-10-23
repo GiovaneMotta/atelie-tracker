@@ -23,7 +23,8 @@
 
    Variáveis (Cloudflare → projeto do PAINEL → Variables and secrets):
      META_CAPI_TOKEN     obrigatória, Secret
-     META_PIXEL_ID       obrigatória
+     META_PIXEL_ID       opcional — por padrão usa o Pixel gravado em
+                         app_settings (tela Marketing do painel)
      META_API_VERSION    opcional (padrão v26.0)
      META_TEST_EVENT_CODE opcional — manda como evento de teste, que
                           aparece em "Eventos de teste" sem sujar os
@@ -59,8 +60,23 @@ interface Resultado { ok: boolean; status: string; detalhe?: string }
 export async function enviarPurchase(orderId: string, env: Record<string, string | undefined>): Promise<Resultado> {
   const sb = admin();
   const token = env.META_CAPI_TOKEN;
-  const pixel = env.META_PIXEL_ID;
-  if (!token || !pixel) return { ok: false, status: 'erro', detalhe: 'META_CAPI_TOKEN / META_PIXEL_ID ausentes' };
+  if (!token) return { ok: false, status: 'erro', detalhe: 'META_CAPI_TOKEN ausente' };
+
+  /* O Pixel sai de app_settings, onde a Lili ja o colou pela tela de
+     Marketing — a mesma fonte que o site usa. Guardar o numero tambem
+     numa variavel de ambiente criaria duas verdades: trocar o Pixel num
+     lugar e esquecer do outro mandaria evento para o dataset errado,
+     em silencio. META_PIXEL_ID so existe como escape, se algum dia for
+     preciso apontar para outro dataset sem mexer na configuracao. */
+  let pixel = env.META_PIXEL_ID || '';
+  if (!pixel) {
+    const { data: cfg } = await sb.from('app_settings')
+      .select('value').eq('key', 'site_config').maybeSingle();
+    pixel = String((cfg?.value as Record<string, unknown>)?.metaPixelId || '').trim();
+  }
+  if (!pixel) {
+    return { ok: false, status: 'erro', detalhe: 'Pixel nao configurado (Marketing no painel).' };
+  }
 
   const { data: pedido } = await sb.from('orders')
     .select('id, number, total, status, payment_status, utm, channel, created_at, customer_id, order_items(sku, quantity)')
