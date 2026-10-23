@@ -23,9 +23,10 @@
 -- mesma peca: ou a segunda enxerga o estoque ja reservado e e recusada,
 -- ou a constraint a derruba.
 --
--- E como a reserva acontece dentro da transacao de create_site_order,
--- recusar a reserva desfaz o pedido inteiro — o link de pagamento nem
--- chega a ser criado, porque ele so nasce depois do pedido existir.
+-- A recusa acontece na MUDANCA DE STATUS, nao na criacao do pedido:
+-- mover para "aguardando pagamento" e o que tenta reservar. Se a peca
+-- ja tiver ido, a mudanca e recusada e voce descobre com a cliente
+-- ainda na conversa — nao depois de prometer a entrega.
 --
 -- ADAPTADA PARA O FECHAMENTO PELO WHATSAPP (revisao de 23/10):
 --   O clique no site deixou de reservar peca. O pedido nasce RASCUNHO
@@ -248,8 +249,8 @@ revoke all on function public.liberar_reservas_expiradas(integer) from public;
 grant execute on function public.liberar_reservas_expiradas(integer) to anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- 5) create_site_order: limpa o vencido, reserva com prazo, e recusa
---    quando nao ha peca.
+-- 5) create_site_order: limpa o vencido e grava o pedido como RASCUNHO.
+--    Nao reserva nada: em rascunho a fase de estoque e "nenhum".
 --    Base: 0019_site_order_tamanho.sql. Mudou so o que esta comentado.
 -- ---------------------------------------------------------------------
 create or replace function public.create_site_order(payload jsonb)
