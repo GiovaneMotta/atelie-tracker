@@ -53,7 +53,12 @@ export default function Marketing() {
             <label className="field"><span>Google Analytics 4 (Measurement ID)</span><input value={f.ga4Id} onChange={(e) => set('ga4Id', e.target.value)} placeholder="G-XXXXXXXXXX" disabled={!writable} /></label>
             <label className="field"><span>Google Tag Manager (Container ID)</span><input value={f.gtmId} onChange={(e) => set('gtmId', e.target.value)} placeholder="GTM-XXXXXXX" disabled={!writable} /></label>
           </div>
-          <p className="note-soft" style={{ padding: '10px 0 0' }}><ShieldCheck size={15} style={{ color: 'var(--ok)' }} /> Consentimento (LGPD) respeitado: nada dispara antes do aceite. Já ativos: PageView, ViewContent, AddToCart, InitiateCheckout, Purchase e Lead.</p>
+          <p className="note-soft" style={{ padding: '10px 0 0' }}><ShieldCheck size={15} style={{ color: 'var(--ok)' }} /> Consentimento (LGPD) respeitado: nada dispara antes do aceite. No site: <b>PageView</b>, <b>ViewContent</b>, <b>AddToCart</b> e <b>Contact</b> (clique no WhatsApp).</p>
+          <p className="note-soft" style={{ padding: '4px 0 0' }}>
+            <b>Purchase</b> não sai do site: ele é enviado daqui pela API de Conversões
+            quando você marca um pedido como <b>pago</b>. Contar o clique no WhatsApp
+            como venda ensinaria a Meta a procurar curioso.
+          </p>
         </div>
       </form>
 
