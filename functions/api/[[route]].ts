@@ -31,6 +31,7 @@ import { handler as knowledge } from '../../netlify/functions/knowledge';
 import { handler as leads } from '../../netlify/functions/leads';
 import { handler as materials } from '../../netlify/functions/materials';
 import { handler as me } from '../../netlify/functions/me';
+import { handler as metaCapi } from '../../netlify/functions/meta-capi';
 import { handler as messages } from '../../netlify/functions/messages';
 import { handler as orders } from '../../netlify/functions/orders';
 import { handler as parseRecipient } from '../../netlify/functions/parse-recipient';
@@ -55,7 +56,7 @@ const HANDLERS: Record<string, (event: any, ctx: any) => Promise<any>> = {
   'automations': automations, 'calendar': calendar, 'cep': cep, 'conversations': conversations,
   'coupons': coupons, 'customers': customers, 'dashboard': dashboard, 'finance': finance, 'frenet-env': frenetEnv, 'frenet-settings': frenetSettings,
   'frenet-test': frenetTest, 'health': health, 'integration-logs': integrationLogs, 'inventory': inventory, 'knowledge': knowledge,
-  'leads': leads, 'materials': materials, 'me': me, 'messages': messages, 'orders': orders,
+  'leads': leads, 'materials': materials, 'me': me, 'meta-capi': metaCapi, 'messages': messages, 'orders': orders,
   'parse-recipient': parseRecipient, 'pricing': pricing, 'production': production,
   'product-image': productImage, 'products': products, 'reports': reports,
   'shipment-cancel': shipmentCancel, 'shipment-label': shipmentLabel, 'shipment-tracking': shipmentTracking,

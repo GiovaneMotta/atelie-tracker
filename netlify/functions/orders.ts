@@ -154,6 +154,19 @@ export const handler: Handler = withHttp(async (event) => {
       await writeAudit({ actorId: ctx.userId, action: 'update', entity: 'order', entityId: id, oldValue: before, newValue: fields });
     }
 
+    /* Virou "pago" agora: a venda existe, entao a Meta precisa saber.
+       O envio vem DEPOIS da gravacao e dentro de try/catch de proposito:
+       Meta fora do ar nao pode impedir a Lili de registrar que recebeu.
+       O que falhar fica pendente em meta_events e e reenviado. */
+    if (fields.payment_status === 'pago' && before.payment_status !== 'pago') {
+      try {
+        const { enviarPurchase } = await import('./meta-capi');
+        await enviarPurchase(id, process.env as Record<string, string | undefined>);
+      } catch (e) {
+        console.warn('[meta-capi] envio falhou, fica pendente:', String(e));
+      }
+    }
+
     const { data: full } = await sb.from('orders').select(DETAIL).eq('id', id).single();
     return json(event, 200, { order: full });
   }
