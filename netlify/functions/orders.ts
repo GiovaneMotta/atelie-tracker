@@ -148,6 +148,23 @@ export const handler: Handler = withHttp(async (event) => {
       fields.shipping_cost = shipping;
       fields.total = round2(Number(before.subtotal) - discount + shipping);
     }
+    /* Havia dois caminhos para dizer que um pedido foi pago, e eles
+       discordavam entre si:
+
+         "Registrar pagamento"  -> payment_status = 'pago'
+         "Avançar status"       -> status = 'pago', e so isso
+
+       Pelo segundo, o estoque BAIXAVA (inventory_fase('pago') e
+       'baixado') mas payment_status continuava 'pendente' - entao a
+       venda nunca chegava a Meta, sem nenhum aviso, e a tela de
+       pagamento continuava dizendo "Pendente" num pedido pago.
+
+       Quem move o pedido para 'pago' esta afirmando que recebeu. As
+       duas colunas passam a dizer a mesma coisa. */
+    if (fields.status === 'pago' && before.payment_status !== 'pago' && !('payment_status' in fields)) {
+      fields.payment_status = 'pago';
+    }
+
     if (Object.keys(fields).length) {
       const { error } = await sb.from('orders').update(fields).eq('id', id);
       if (error) throw badRequest(error.message);
