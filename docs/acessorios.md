@@ -1,25 +1,30 @@
-# Acessórios — o que falta cadastrar
+# Acessórios
 
-As fotos já estão prontas e o site já sabe mostrar a aba **Acessórios**. Falta só
-cadastrar as peças: **o catálogo que vai ao ar vem do banco**, não do arquivo
-`products.js` do site. Enquanto você não cadastrar, a aba não aparece para a
-cliente.
+**Já está no ar.** O site foi publicado e o `supabase/dados/acessorios.sql` foi
+executado em 24/10/2026: as 10 peças estão cadastradas, ativas, com as duas
+categorias cada, e a aba **Acessórios** já aparece no catálogo.
 
-## Caminho rápido: o SQL pronto
+## O que ainda falta: preço e tamanho
 
-`supabase/dados/acessorios.sql` cadastra as 10 de uma vez, com nome, SKU,
-categorias, descrição e foto já preenchidos.
+As peças entraram **sem preço e sem tamanho** — nenhuma foto diz isso e não dava
+para inventar. Hoje, no site:
 
-1. **Publique o site primeiro.** As fotos só existem depois do deploy — rodar o
-   SQL antes faz as peças aparecerem sem imagem.
-2. Abra o arquivo e preencha os preços (`price_cash` e `price_card`) na tabela
-   do topo. Pode deixar `null` e preencher depois no painel.
-3. Supabase → SQL Editor → cole tudo → Run.
+- o card não mostra preço nenhum;
+- o carrinho e a mensagem do WhatsApp dizem **"a combinar"** naquela linha, e o
+  total avisa que ainda há valor a fechar;
+- um pedido que inclua a peça chega ao painel com **R$ 0,00** nessa linha.
 
-É seguro rodar de novo: peça que já existe é deixada como está, e tudo roda
-dentro de uma transação.
+Isso funciona, mas é um remendo. Preencha **Preço à vista / Pix** e **Preço no
+cartão** de cada uma em Produtos, no painel, e o site passa a mostrar o valor
+sozinho. Se quiser contagem de estoque, crie também a variação de tamanho.
 
-## Ou na mão, uma a uma
+## Se precisar rodar o SQL de novo
+
+`supabase/dados/acessorios.sql` é seguro de repetir: peça que já existe é
+deixada intacta (`on conflict do nothing`), então rodar outra vez não apaga
+preço nem descrição que você tenha ajustado no painel.
+
+## Como cadastrar uma peça nova, na mão
 
 Painel → **Produtos** → *Nova peça*. Para cada item da tabela abaixo:
 
