@@ -3,6 +3,7 @@ import { ShieldCheck, Copy, Check, Link2, Plus, Trash2, Pencil, Ticket } from 'l
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { formatBRL } from '../lib/format';
+import MetaEventos from '../components/MetaEventos';
 
 interface Settings { metaPixelId: string; ga4Id: string; gtmId: string; siteUrl?: string; [k: string]: any; }
 
@@ -64,6 +65,7 @@ export default function Marketing() {
 
       <UtmGenerator defaultBase={f.siteUrl || 'https://ateliedalili-site.pages.dev'} />
 
+      <MetaEventos writable={writable} />
       <CouponsManager writable={writable} />
     </div>
   );
