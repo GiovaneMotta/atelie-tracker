@@ -65,7 +65,12 @@ insert into _acessorios values
   ('AC-013', 'Sapatinho Clássico Azul Bebê',    'sapatinho-classico-azul-bebe',    'Sapatinho em tricô azul bebê, com punho canelado dobrado, tira sobre o peito do pé e dois botões de madeira. Modelo clássico, sem aplicação.',      '["images/acessorios/ac-013-1.jpg"]', null, null, array['sapatinho-menino']),
   ('AC-014', 'Sapatinho Clássico Azul Jeans',   'sapatinho-classico-azul-jeans',   'Sapatinho em tricô azul jeans, com punho canelado dobrado, tira sobre o peito do pé e dois botões de madeira. Modelo clássico, sem aplicação.',     '["images/acessorios/ac-014-1.jpg"]', null, null, array['sapatinho-menino']),
   ('AC-015', 'Sapatinho Clássico Azul Marinho', 'sapatinho-classico-azul-marinho', 'Sapatinho em tricô azul marinho, com punho canelado dobrado, tira sobre o peito do pé e dois botões de madeira. Modelo clássico, sem aplicação.',   '["images/acessorios/ac-015-1.jpg"]', null, null, array['sapatinho-menino']),
-  ('AC-016', 'Sapatinho Clássico Branco',       'sapatinho-classico-branco',       'Sapatinho em tricô branco, com punho canelado dobrado, tira sobre o peito do pé e dois botões de madeira. Modelo clássico, sem aplicação.',         '["images/acessorios/ac-016-1.jpg"]', null, null, array['sapatinho-menino','sapatinho-menina']);
+  ('AC-016', 'Sapatinho Clássico Branco',       'sapatinho-classico-branco',       'Sapatinho em tricô branco, com punho canelado dobrado, tira sobre o peito do pé e dois botões de madeira. Modelo clássico, sem aplicação.',         '["images/acessorios/ac-016-1.jpg"]', null, null, array['sapatinho-menino','sapatinho-menina']),
+
+  -- A touca e o unico acessorio que LEVA nome bordado: e o produto dela.
+  -- Por isso a regra do campo de bordado no site exclui calcado
+  -- (sapatinho-*, sapato-faixa) e nao "acessorios" inteiro.
+  ('AC-017', 'Touca Personalizada', 'touca-personalizada', 'Touca de tricô branco com punho dobrado, com o nome do bebê bordado à mão no punho. Nas fotos: em rosê com borboleta e em cinza com coroa dourada.', '["images/acessorios/ac-017-1.jpg","images/acessorios/ac-017-2.jpg","images/acessorios/ac-017-3.jpg"]', null, null, array['touca']);
 
 -- ---------------------------------------------------------------------
 -- 1) Os produtos.

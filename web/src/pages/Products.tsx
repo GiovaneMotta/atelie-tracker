@@ -51,7 +51,7 @@ function slugify(s: string): string {
    segunda fila de filtros, dentro da aba Acessorios, em vez de somar abas
    no menu do topo. Marque sempre "acessorios" JUNTO com a subcategoria. */
 const CATEGORIES = ['menina', 'menino', 'unissex', 'luxo', 'manta', 'cueiro', 'kit',
-  'acessorios', 'sapato-faixa', 'sapatinho-menina', 'sapatinho-menino'];
+  'acessorios', 'sapato-faixa', 'sapatinho-menina', 'sapatinho-menino', 'touca'];
 
 export default function Products() {
   const { can } = useAuth();
