@@ -1,14 +1,18 @@
 # Acessórios
 
-**A aba está no ar.** O site foi publicado e o `supabase/dados/acessorios.sql`
-foi executado em 24/10/2026: as **10 primeiras** peças estão cadastradas,
-ativas, e a aba **Acessórios** já aparece no catálogo.
+**Está tudo no ar.** O site foi publicado e o `supabase/dados/acessorios.sql`
+foi executado — 10 peças em 24/10/2026 e mais 6 (o sapatinho clássico em seis
+cores) em 25/10/2026. As **16** estão cadastradas e ativas, e a aba
+**Acessórios** aparece no catálogo com as três subcategorias:
 
-> **Falta rodar o SQL de novo.** Em 25/10/2026 entraram mais **6 peças** no
-> arquivo (o sapatinho clássico em seis cores) e as fotos delas já estão
-> publicadas, mas elas ainda **não foram cadastradas no banco**. Abra
-> `supabase/dados/acessorios.sql`, copie tudo, cole no SQL Editor e rode: as
-> 10 que já existem são ignoradas e só as 6 novas entram.
+| Subcategoria | Peças |
+|---|---|
+| Sapatinho + Faixa | 7 |
+| Sapatinhos Menino | 9 |
+| Sapatinhos Menina | 2 (clássico vermelho e branco, que são unissex) |
+
+Sapatinho **não** mostra mais o campo "Nome do bebê para bordar" — acessório
+não leva nome bordado, e o campo prometia um serviço que não existe ali.
 
 ## O que ainda falta: preço e tamanho
 
