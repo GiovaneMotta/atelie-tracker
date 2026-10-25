@@ -1,18 +1,27 @@
 # Acessórios
 
 **Está tudo no ar.** O site foi publicado e o `supabase/dados/acessorios.sql`
-foi executado — 10 peças em 24/10/2026 e mais 6 (o sapatinho clássico em seis
-cores) em 25/10/2026. As **16** estão cadastradas e ativas, e a aba
-**Acessórios** aparece no catálogo com as três subcategorias:
+foi executado — 10 peças em 24/10/2026, mais 6 (o sapatinho clássico em seis
+cores) e a touca em 25/10/2026. As **17** estão cadastradas e ativas, e a aba
+**Acessórios** aparece no catálogo com quatro subcategorias:
 
 | Subcategoria | Peças |
 |---|---|
 | Sapatinho + Faixa | 7 |
 | Sapatinhos Menino | 9 |
 | Sapatinhos Menina | 2 (clássico vermelho e branco, que são unissex) |
+| Toucas | 1 |
 
-Sapatinho **não** mostra mais o campo "Nome do bebê para bordar" — acessório
-não leva nome bordado, e o campo prometia um serviço que não existe ali.
+## O campo "Nome do bebê para bordar"
+
+Quem não mostra o campo é o **calçado** — `sapatinho-menino`,
+`sapatinho-menina` e `sapato-faixa`. Acessório que não é calçado continua
+mostrando, e é por isso que a **touca** tem o campo: o nome bordado é
+justamente o produto dela.
+
+Se cadastrar um acessório novo que **não** deva pedir nome, marque uma dessas
+três subcategorias. A regra mora em `aceitaBordado()`, no `js/produto.js` do
+site.
 
 ## O que ainda falta: preço e tamanho
 
