@@ -35,6 +35,13 @@ function semAcento(s: string): string {
 
 const ROTULOS_COMUNS = ['Tecido', 'Medidas', 'Composição', 'Personalização', 'Cuidados', 'Peso'];
 
+/* Peças mais usadas nas saídas: viram botões de 1 clique em "Itens inclusos"
+   (clicou, incluiu — sem digitar). Para mudar a lista, é só editar aqui. */
+const PECAS_SUGERIDAS = [
+  'Vestido', 'Body', 'Macacão', 'Calça', 'Manta', 'Touca', 'Touca Personalizada',
+  'Sapatinho', 'Sapato e Faixa', 'Faixa', 'Luva', 'Touca e Luva', 'Babador', 'Nome na golinha',
+];
+
 export function parseFicha(texto: string): Ficha {
   const bruto = String(texto || '').replace(/\r\n?/g, '\n');
   const linhas = bruto.split('\n');
@@ -117,6 +124,11 @@ export default function FichaEditor({ value, onChange, disabled }: {
     onChange(serializeFicha(novo));
   };
 
+  /* Sugestões que ainda não foram incluídas (compara sem acento/maiúscula). */
+  const jaIncluso = new Set(f.contem.map((x) => semAcento(x)));
+  const sugestoes = PECAS_SUGERIDAS.filter((p) => !jaIncluso.has(semAcento(p)));
+  const addPeca = (p: string) => grava({ contem: [...f.contem, p] });
+
   /* Envolve o que está selecionado. Sem seleção, deixa o cursor entre as
      marcas, para a pessoa já sair digitando dentro do negrito. */
   function envolver(marca: string) {
@@ -172,16 +184,30 @@ export default function FichaEditor({ value, onChange, disabled }: {
 
       <h4 style={{ margin: '18px 0 6px' }}>Itens inclusos</h4>
       <p className="muted small" style={{ marginTop: 0 }}>Vira a aba “Itens inclusos” no site.</p>
+      <datalist id="pecas-sugeridas">
+        {PECAS_SUGERIDAS.map((p) => <option key={p} value={p} />)}
+      </datalist>
       {f.contem.map((item, i) => (
         <div style={linha} key={i}>
-          <input value={item} disabled={disabled} placeholder="01 Vestido em tricô"
+          <input list="pecas-sugeridas" value={item} disabled={disabled} placeholder="01 Vestido em tricô"
             onChange={(e) => grava({ contem: f.contem.map((x, j) => j === i ? e.target.value : x) })} />
           <button type="button" className="btn-link" disabled={disabled}
             onClick={() => grava({ contem: f.contem.filter((_, j) => j !== i) })}>✕</button>
         </div>
       ))}
+      {sugestoes.length > 0 && (
+        <>
+          <p className="muted small" style={{ margin: '2px 0 6px' }}>Toque para incluir:</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {sugestoes.map((p) => (
+              <button type="button" key={p} className="btn btn-ghost btn-sm" disabled={disabled}
+                onClick={() => addPeca(p)}>+ {p}</button>
+            ))}
+          </div>
+        </>
+      )}
       <button type="button" className="btn btn-ghost btn-sm" disabled={disabled}
-        onClick={() => grava({ contem: [...f.contem, ''] })}>+ Item</button>
+        onClick={() => grava({ contem: [...f.contem, ''] })}>+ Outra peça…</button>
 
       <h4 style={{ margin: '18px 0 6px' }}>Características</h4>
       <datalist id="rotulos-ficha">
