@@ -16,7 +16,7 @@
    representa, dá para ver e corrigir o original em vez de perdê-lo.
    Seções "##" desconhecidas são preservadas intactas.
    ================================================================ */
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 interface Carac { k: string; v: string }
 interface Ficha {
@@ -98,8 +98,24 @@ export default function FichaEditor({ value, onChange, disabled }: {
 }) {
   const [cru, setCru] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
-  const f = parseFicha(value);
-  const grava = (mudanca: Partial<Ficha>) => onChange(serializeFicha({ ...f, ...mudanca }));
+  const [f, setF] = useState<Ficha>(() => parseFicha(value));
+
+  /* Reparse só quando `value` muda POR FORA (ex.: outro produto carregado).
+     Quando a mudança nasceu aqui, serializeFicha(f) === value e nada é
+     reparseado — assim uma linha recém-adicionada ainda vazia NÃO some no
+     round-trip (serializeFicha descarta itens/campos vazios de propósito,
+     para não gravar "- " em branco). Era isso que fazia o "+ Item" parecer
+     não funcionar: o item vazio sumia antes de dar para digitar. */
+  useEffect(() => {
+    if (serializeFicha(f) !== value) setF(parseFicha(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const grava = (mudanca: Partial<Ficha>) => {
+    const novo = { ...f, ...mudanca };
+    setF(novo);
+    onChange(serializeFicha(novo));
+  };
 
   /* Envolve o que está selecionado. Sem seleção, deixa o cursor entre as
      marcas, para a pessoa já sair digitando dentro do negrito. */
