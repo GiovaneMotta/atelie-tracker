@@ -144,11 +144,16 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
   const [images, setImages] = useState<string[]>(product?.images || []);
   const [featured, setFeatured] = useState<boolean>(!!product?.featured);
   const [categories, setCategories] = useState<string[]>(
-    (product?.product_categories || []).map((c) => c.category).filter((c) => !c.startsWith('modelo:')));
+    (product?.product_categories || []).map((c) => c.category)
+      .filter((c) => !c.startsWith('modelo:') && !c.startsWith('pecas:')));
   /* O modelo mora numa categoria com prefixo: reaproveita o que ja existe
      e chega ao site sem mexer na funcao public_catalog. */
   const [modelo, setModelo] = useState<string>(
     ((product?.product_categories || []).find((c) => c.category.startsWith('modelo:'))?.category || '').replace('modelo:', ''));
+  /* "Grupo de peças": liga versões da MESMA saída com conjuntos diferentes
+     (mais/menos peças). Mesma mecânica do modelo, em categoria "pecas:". */
+  const [grupoPecas, setGrupoPecas] = useState<string>(
+    ((product?.product_categories || []).find((c) => c.category.startsWith('pecas:'))?.category || '').replace('pecas:', ''));
   const [variants, setVariants] = useState<Variant[]>(
     /* desativada = historico: nao aparece no formulario */
     (product?.product_variants || []).filter((v) => v.is_active !== false)
@@ -186,7 +191,11 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
       height_cm: f.height_cm ? parseBRL(f.height_cm) : null,
       description: f.description || null,
       featured, images,
-      categories: modelo.trim() ? [...categories, 'modelo:' + modelo.trim().toLowerCase()] : categories,
+      categories: [
+        ...categories,
+        ...(modelo.trim() ? ['modelo:' + modelo.trim().toLowerCase()] : []),
+        ...(grupoPecas.trim() ? ['pecas:' + grupoPecas.trim().toLowerCase()] : []),
+      ],
       variants: variants.map((v) => ({
         id: v.id, size: v.size, color: v.color, gender: v.gender,
         price_delta: parseBRL(v.price_delta),
@@ -304,6 +313,19 @@ function ProductEditor({ product, onSaved, onCancel }: { product: Product | null
               <p className="muted small">
                 Peças com o mesmo modelo viram as bolinhas de “outras cores” na página do produto.
                 Use sempre a mesma palavra, sem acento, em todas as cores do conjunto.
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Quantidade de peças</h3>
+              <label className="field"><span>Grupo de peças (agrupa versões com mais/menos peças)</span>
+                <input value={grupoPecas} onChange={(e) => setGrupoPecas(e.target.value)}
+                  placeholder="ex.: bailarina-rose — deixe vazio se a peça não tem versões" /></label>
+              <p className="muted small">
+                Versões da mesma saída com conjuntos diferentes (ex.: 5 peças e 7 peças) que tiverem
+                o mesmo grupo viram o seletor <strong>“Quantidade de peças”</strong> na página.
+                O rótulo de cada opção sai da contagem de “Itens inclusos”. Use a mesma palavra,
+                sem acento, em todas as versões.
               </p>
             </div>
 
