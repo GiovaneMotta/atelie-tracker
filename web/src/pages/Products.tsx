@@ -278,7 +278,10 @@ function ProductEditor({ product, onClose, onReload }: { product: Product | null
   const nameErr = !f.name.trim();
   const noPrice = !f.price_cash.trim();
   const noPhoto = images.length === 0;
-  const warns: Partial<Record<SectionId, boolean>> = { info: nameErr || noPrice, fotos: noPhoto };
+  /* Produto ativo sem SKU não aparece no site: o catálogo público filtra
+     peças sem código (sem SKU não há link estável produto.html?id/sku). */
+  const noSkuAtivo = f.status === 'ativo' && !f.sku.trim();
+  const warns: Partial<Record<SectionId, boolean>> = { info: nameErr || noPrice || noSkuAtivo, fotos: noPhoto, publicacao: noSkuAtivo };
 
   function basePayload() {
     return {
@@ -461,7 +464,11 @@ function ProductEditor({ product, onClose, onReload }: { product: Product | null
                       style={nameErr ? { borderColor: 'var(--bad)' } : undefined} />
                     {nameErr && <span className="field-err">O nome é obrigatório.</span>}
                   </label>
-                  <label className="field"><span>SKU (código)</span><input value={f.sku} onChange={(e) => set('sku', e.target.value)} placeholder="SM-G000" /></label>
+                  <label className="field"><span>SKU (código)</span>
+                    <input value={f.sku} onChange={(e) => set('sku', e.target.value)} placeholder="SM-G000"
+                      style={noSkuAtivo ? { borderColor: 'var(--warn)' } : undefined} />
+                    {noSkuAtivo && <span className="field-err" style={{ color: 'var(--warn)' }}>Produto ativo sem SKU não aparece no site.</span>}
+                  </label>
                   <label className="field"><span>Slug (URL)</span><input value={f.slug} onChange={(e) => set('slug', e.target.value)} placeholder={slugify(f.name) || 'gerado-do-nome'} /></label>
                   <label className="field"><span>Preço à vista / Pix (R$)</span>
                     <input value={f.price_cash} onChange={(e) => set('price_cash', e.target.value)} placeholder="349,00"
@@ -722,11 +729,12 @@ function ProductEditor({ product, onClose, onReload }: { product: Product | null
                   <span className="track" /><span className="switch-label">Produto em destaque (vitrine “Favoritas” da home)</span>
                 </label>
 
-                {(noPhoto || noPrice || nameErr) && (
+                {(noPhoto || noPrice || nameErr || noSkuAtivo) && (
                   <div className="val-box">
                     <strong><AlertTriangle size={14} style={{ verticalAlign: '-2px' }} /> Antes de publicar, confira:</strong>
                     <ul>
                       {nameErr && <li>o produto está <b>sem nome</b>.</li>}
+                      {noSkuAtivo && <li>o produto está <b>ativo sem SKU</b> — sem um código, ele não aparece no site.</li>}
                       {noPrice && <li>o produto está <b>sem preço à vista</b>.</li>}
                       {noPhoto && <li>o produto está <b>sem fotografia</b> (a 1ª é a capa).</li>}
                     </ul>
@@ -798,10 +806,17 @@ function snapOf(a: {
 const MAX_INPUT_BYTES = 15 * 1024 * 1024; // 15 MB por arquivo (antes de comprimir)
 const MAX_DIM = 1600;                     // maior lado após redimensionar
 const WEBP_QUALITY = 0.82;                // qualidade boa p/ foto de produto
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
+const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif,.heic,.heif';
 
 function isStorageUrl(u: string): boolean {
   return u.includes('/storage/v1/object/public/catalog/');
+}
+
+/* HEIC/HEIF (fotos de iPhone) o navegador não decodifica sozinho: detecta
+   pela extensão ou pelo tipo (às vezes vem vazio no arquivo .heic). */
+function isHeic(file: File): boolean {
+  const n = file.name.toLowerCase();
+  return file.type === 'image/heic' || file.type === 'image/heif' || n.endsWith('.heic') || n.endsWith('.heif');
 }
 
 function loadImage(file: Blob): Promise<HTMLImageElement> {
@@ -824,11 +839,29 @@ async function prepararUpload(file: File): Promise<{ blob: Blob; contentType: st
     if (file.size > LIMITE_GIF) throw new Error('GIF acima de 5 MB. Reduza a duração ou o tamanho antes de subir.');
     return { blob: file, contentType: 'image/gif' };
   }
+  /* HEIC do iPhone: o canvas não lê direto. Converte p/ JPEG (libheif via
+     heic2any, carregado só quando aparece um HEIC) e segue o fluxo normal. */
+  if (isHeic(file)) {
+    const base = await heicParaJpeg(file);
+    return { blob: await compressToWebp(base), contentType: 'image/webp' };
+  }
   return { blob: await compressToWebp(file), contentType: 'image/webp' };
 }
 
+/** Converte HEIC/HEIF -> JPEG no navegador (import dinâmico, não pesa no load). */
+async function heicParaJpeg(file: File): Promise<Blob> {
+  try {
+    const mod: any = await import('heic2any');
+    const heic2any = (mod.default || mod) as (opts: { blob: Blob; toType?: string; quality?: number }) => Promise<Blob | Blob[]>;
+    const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+    return Array.isArray(out) ? out[0] : out;
+  } catch {
+    throw new Error('Não foi possível ler este HEIC. Tente exportar como JPG no celular (Ajustes › Câmera › Mais compatível).');
+  }
+}
+
 /** Redimensiona (se muito grande) e converte para WebP, no navegador. */
-async function compressToWebp(file: File): Promise<Blob> {
+async function compressToWebp(file: Blob): Promise<Blob> {
   const img = await loadImage(file);
   let { width, height } = img;
   const max = Math.max(width, height);
@@ -879,10 +912,11 @@ function ImageManager({ productId, images, setImages }:
 
   async function uploadOne(file: File) {
     const id = uid();
-    if (!file.type.startsWith('image/')) { setUploads((c) => [...c, { id, name: file.name, preview: '', status: 'erro', msg: 'Não é uma imagem.' }]); return; }
+    if (!file.type.startsWith('image/') && !isHeic(file)) { setUploads((c) => [...c, { id, name: file.name, preview: '', status: 'erro', msg: 'Não é uma imagem.' }]); return; }
     if (file.size > MAX_INPUT_BYTES) { setUploads((c) => [...c, { id, name: file.name, preview: '', status: 'erro', msg: 'Arquivo muito grande (máx. 15MB).' }]); return; }
 
-    const preview = URL.createObjectURL(file);
+    /* HEIC não renderiza como prévia no navegador: mostra só o placeholder. */
+    const preview = isHeic(file) ? '' : URL.createObjectURL(file);
     setUploads((c) => [...c, { id, name: file.name, preview, status: 'comprimindo' }]);
     const ctrl = new AbortController();
     ctrls.current.set(id, ctrl);
@@ -1018,7 +1052,7 @@ function ImageManager({ productId, images, setImages }:
       >
         <strong>Arraste imagens aqui</strong>
         <span className="muted small">ou clique para selecionar — várias de uma vez</span>
-        <span className="muted small">JPG, PNG, WebP ou AVIF · até 15MB cada</span>
+        <span className="muted small">JPG, PNG, WebP, AVIF ou HEIC (iPhone) · até 15MB cada</span>
       </div>
       {images.length > 0 && <p className="muted small" style={{ marginTop: 8 }}>As fotos são gravadas quando você <b>salvar o produto</b>.</p>}
 
