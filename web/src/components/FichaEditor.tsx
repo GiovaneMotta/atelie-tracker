@@ -18,8 +18,8 @@
    ================================================================ */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
-interface Carac { k: string; v: string }
-interface Ficha {
+export interface Carac { k: string; v: string }
+export interface Ficha {
   prosa: string;
   contem: string[];
   caracs: Carac[];
@@ -29,7 +29,7 @@ interface Ficha {
 }
 
 /** "Características" e "Caracteristicas" são a mesma coisa para quem digita. */
-function semAcento(s: string): string {
+export function semAcento(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
