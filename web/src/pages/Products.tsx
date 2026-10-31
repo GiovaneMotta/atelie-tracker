@@ -58,6 +58,25 @@ function slugify(s: string): string {
     .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+/** Sugere o próximo SKU na MESMA família do SKU base (ex.: "SM-G016" ->
+    o próximo livre "SM-G0NN", olhando todos os SKUs já usados). Mantém o
+    prefixo e a largura do número do base. Sem número no fim, devolve ''
+    (não arrisca um palpite ruim). O número sai sempre acima do maior da
+    família, então não colide — e o banco ainda tem unicidade de SKU. */
+function nextSku(baseSku: string, skus: string[]): string {
+  const m = String(baseSku || '').trim().toUpperCase().match(/^(.*?)(\d+)$/);
+  if (!m) return '';
+  const prefixo = m[1];
+  const largura = m[2].length;
+  const re = new RegExp('^' + prefixo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d+)$', 'i');
+  let max = 0;
+  for (const s of skus) {
+    const mm = String(s || '').trim().toUpperCase().match(re);
+    if (mm) max = Math.max(max, parseInt(mm[1], 10));
+  }
+  return prefixo + String(max + 1).padStart(largura, '0');
+}
+
 /* As subcategorias de "acessorios" o site mostra numa segunda fila de filtros,
    dentro da aba Acessórios. Marque sempre "acessorios" JUNTO da subcategoria. */
 const CAT_GRUPOS: { grupo: string; itens: string[] }[] = [
@@ -355,9 +374,12 @@ function ProductEditor({ product, onClose, onReload }: { product: Product | null
      modelo. Aproveita descrição, composição, itens, categorias, grupos e
      preços; NÃO copia SKU, slug, estoque nem fotos (a cor nova tem as suas). */
   function duplicate() {
-    if (!window.confirm('Criar um novo produto a partir deste? Descrição, composição, itens, categorias e preços são aproveitados. SKU, fotos e estoque começam vazios para você preencher.')) return;
+    if (!window.confirm('Criar um novo produto a partir deste? Descrição, composição, itens, categorias e preços são aproveitados. O SKU é sugerido automaticamente (confira antes de salvar); fotos e estoque começam vazios.')) return;
+    /* SKU sugerido: o próximo livre na mesma família do original. Fica
+       editável — é um palpite, não uma regra; confira antes de salvar. */
+    const skuSugerido = nextSku(f.sku, [f.sku, ...catalogo.map((c) => c.sku || '')]);
     setPid(null);
-    setF((s) => ({ ...s, name: s.name.replace(/\s*\(cópia\)$/, '') + ' (cópia)', sku: '', slug: '', status: 'inativo' }));
+    setF((s) => ({ ...s, name: s.name.replace(/\s*\(cópia\)$/, '') + ' (cópia)', sku: skuSugerido, slug: '', status: 'inativo' }));
     setImages([]);
     setStockProduto('');
     setVariants((cur) => cur.map((v) => ({ ...v, id: undefined, stock: '' })));
