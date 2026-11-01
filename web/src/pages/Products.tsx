@@ -2,6 +2,7 @@ import {
   useEffect, useRef, useState,
   type CSSProperties, type DragEvent, type Dispatch, type FormEvent, type SetStateAction,
 } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   Info, Image as ImageIcon, Package, Palette, Layers, Tag, Eye,
   Star, Trash2, ChevronUp, ChevronDown, ExternalLink, Copy, Plus, X,
@@ -113,10 +114,12 @@ type SectionId = typeof SECTIONS[number]['id'];
 
 export default function Products() {
   const { can } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const edit = searchParams.get('edit');   // null | 'novo' | '<id do produto>'
   const [list, setList] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [editing, setEditing] = useState<Product | 'new' | null>(null);
   const [q, setQ] = useState('');
   const [statusF, setStatusF] = useState('');
   const writable = can('products.write');
@@ -135,19 +138,28 @@ export default function Products() {
   }
   useEffect(() => { load(); }, []);
 
-  if (editing) {
-    return <ProductEditor
-      product={editing === 'new' ? null : editing}
-      onClose={() => { setEditing(null); load(); }}
-      onReload={load}
-    />;
+  /* Editor por URL (/produtos?edit=novo ou ?edit=<id>): abre em nova guia e
+     pode ser recarregado direto. No mesmo tab a lista fica montada, então
+     abrir é instantâneo (sem recarregar). */
+  if (edit) {
+    if (edit !== 'novo' && loading) return <div className="page"><p className="muted">Carregando…</p></div>;
+    const product = edit === 'novo' ? null : (list.find((p) => p.id === edit) || null);
+    if (edit !== 'novo' && !product) {
+      return (
+        <div className="page">
+          <p className="crumb"><Link className="btn-link" to="/produtos">← Produtos</Link></p>
+          <div className="empty-card"><p className="empty-emoji">🔍</p><p>Produto não encontrado.</p></div>
+        </div>
+      );
+    }
+    return <ProductEditor product={product} onClose={() => navigate('/produtos')} onReload={load} />;
   }
 
   return (
     <div className="page">
       <div className="page-head">
         <div><h1>Produtos</h1><p className="muted">{loading ? 'Carregando…' : `${filtered.length} de ${list.length} produto(s)`}</p></div>
-        {writable && <button className="btn btn-primary" onClick={() => setEditing('new')}><Plus size={16} /> Novo produto</button>}
+        {writable && <Link className="btn btn-primary" to="/produtos?edit=novo"><Plus size={16} /> Novo produto</Link>}
       </div>
 
       <div className="filters" style={{ marginBottom: 16 }}>
@@ -167,10 +179,12 @@ export default function Products() {
           <tbody>
             {!loading && filtered.length === 0 && <tr><td colSpan={7} className="muted center">{list.length === 0 ? 'Nenhum produto ainda.' : 'Nenhum produto encontrado.'}</td></tr>}
             {filtered.map((p) => (
-              <tr key={p.id} className={writable ? 'row-link' : ''} onClick={() => writable && setEditing(p)}>
-                <td>{p.images?.[0]
-                  ? <img src={displaySrc(p.images[0])} alt="" style={THUMB_MINI} loading="lazy" />
-                  : <div style={{ ...THUMB_MINI, ...THUMB_EMPTY }}>—</div>}</td>
+              <tr key={p.id} className={writable ? 'row-link' : ''}>
+                <td>
+                  {writable && <Link className="row-stretch" to={'/produtos?edit=' + p.id} aria-label={'Editar ' + p.name} />}
+                  {p.images?.[0]
+                    ? <img src={displaySrc(p.images[0])} alt="" style={THUMB_MINI} loading="lazy" />
+                    : <div style={{ ...THUMB_MINI, ...THUMB_EMPTY }}>—</div>}</td>
                 <td><strong>{p.name}</strong></td>
                 <td className="mono">{p.sku || '—'}</td>
                 <td>{(p.product_categories || []).filter((c) => !c.category.startsWith('modelo:') && !c.category.startsWith('pecas:')).map((c) => <span key={c.category} className="badge">{catLabel(c.category)}</span>)}</td>
