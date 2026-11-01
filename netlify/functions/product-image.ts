@@ -20,6 +20,12 @@ function uid(): string {
   catch { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
 }
 
+/** Nome de arquivo amigável p/ SEO a partir do nome/slug do produto. */
+function slugify(s: string): string {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
 function base64ToBytes(b64: string): Uint8Array {
   const clean = b64.includes(',') ? b64.slice(b64.indexOf(',') + 1) : b64; // aceita data URL
   const bin = atob(clean);
@@ -48,10 +54,20 @@ export const handler: Handler = withHttp(async (event) => {
       : contentType === 'image/jpeg' ? 'jpg'
       : (contentType.split('/')[1] || 'bin');
 
-    // caminho previsível e sem conflito: produtos/{id}/{uuid}.{ext}
-    const path = `produtos/${productId}/${uid()}.${ext}`;
-
     const sb = admin();
+
+    /* Nome do arquivo amigável p/ SEO (Google Imagens): slug do produto +
+       trecho único, em vez de só um UUID. O slug no nome ajuda a relevância
+       da imagem. Sem slug/nome cadastrado, cai no trecho único apenas. */
+    let prefixo = '';
+    try {
+      const { data: prod } = await sb.from('products').select('slug, name').eq('id', productId).maybeSingle();
+      const base = slugify(prod?.slug || prod?.name || '').slice(0, 60);
+      if (base) prefixo = base + '-';
+    } catch { /* sem slug: usa só o trecho único */ }
+    // caminho previsível e sem conflito: produtos/{id}/{slug}-{trecho}.{ext}
+    const path = `produtos/${productId}/${prefixo}${uid().slice(0, 8)}.${ext}`;
+
     const { error } = await sb.storage.from(BUCKET).upload(path, bytes, {
       contentType, upsert: false, cacheControl: '31536000',
     });
