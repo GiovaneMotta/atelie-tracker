@@ -614,12 +614,20 @@ function ProductEditor({ product, onClose, onReload }: { product: Product | null
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setComponents((cur) => [...cur, { child_product_id: '', quantity: 1, match_size: true }]); setSavedOk(false); }}><Plus size={14} /> Peça do kit</button>
 
                 <h4 className="sub-h">Personalizações / adicionais</h4>
-                <p className="muted small" style={{ marginTop: -6 }}>Ex.: “Bordar nome” — R$ 19,90. Se o adicional for uma peça real, escolha o produto para baixar do estoque dele.</p>
+                <p className="muted small" style={{ marginTop: -6 }}>Ex.: “Bordar nome” — R$ 19,90. Se o adicional for uma peça real, escolha o produto: o nome é preenchido sozinho e a <strong>foto dela aparece</strong> no “Monte seu conjunto” do site. O preço é o valor cobrado para adicionar.</p>
                 {addons.map((a, i) => (
                   <div className="row-inline" key={i}>
                     <input placeholder="Nome do adicional" value={a.name} onChange={(e) => { setAddons((cur) => cur.map((x, j) => j === i ? { ...x, name: e.target.value } : x)); setSavedOk(false); }} />
                     <input placeholder="R$" value={a.price} style={{ maxWidth: 90 }} onChange={(e) => { setAddons((cur) => cur.map((x, j) => j === i ? { ...x, price: e.target.value } : x)); setSavedOk(false); }} />
-                    <select value={a.addon_product_id || ''} onChange={(e) => { setAddons((cur) => cur.map((x, j) => j === i ? { ...x, addon_product_id: e.target.value || null } : x)); setSavedOk(false); }}>
+                    <select value={a.addon_product_id || ''} onChange={(e) => {
+                      /* Ao ligar uma peça real, o nome do adicional passa a ser o
+                         nome dela: é o que casa a FOTO no "Monte seu conjunto" do
+                         site (e mostra o nome certo pro cliente, em vez de "1"). */
+                      const novoId = e.target.value || null;
+                      const prod = novoId ? catalogo.find((c) => c.id === novoId) : null;
+                      setAddons((cur) => cur.map((x, j) => j === i ? { ...x, addon_product_id: novoId, name: prod ? prod.name : x.name } : x));
+                      setSavedOk(false);
+                    }}>
                       <option value="">sem estoque (serviço)</option>
                       {catalogo.filter((p) => p.id !== pid).map((p) => <option key={p.id} value={p.id}>{p.sku ? p.sku + ' · ' : ''}{p.name}</option>)}
                     </select>
