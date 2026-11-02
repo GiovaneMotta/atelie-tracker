@@ -39,7 +39,7 @@ interface Product {
 }
 
 /** Catálogo leve para componentes/adicionais e para mostrar as "irmãs" do grupo. */
-interface CatItem { id: string; name: string; sku: string | null; image: string | null; cats: string[]; }
+interface CatItem { id: string; name: string; sku: string | null; image: string | null; cats: string[]; price: number | null; }
 
 /** Contagem gravada para a peça inteira (a linha sem variação). */
 function estoqueDoProduto(p: Product | null): string {
@@ -271,6 +271,7 @@ function ProductEditor({ product, onClose, onReload }: { product: Product | null
       .then((r) => setCatalogo((r.products || []).map((p) => ({
         id: p.id, name: p.name, sku: p.sku, image: p.images?.[0] || null,
         cats: (p.product_categories || []).map((c) => c.category),
+        price: p.price_cash ?? null,
       }))))
       .catch(() => {});
   }, []);
@@ -634,12 +635,17 @@ function ProductEditor({ product, onClose, onReload }: { product: Product | null
                     <input placeholder="Nome do adicional" value={a.name} onChange={(e) => { setAddons((cur) => cur.map((x, j) => j === i ? { ...x, name: e.target.value } : x)); setSavedOk(false); }} />
                     <input placeholder="R$" value={a.price} style={{ maxWidth: 90 }} onChange={(e) => { setAddons((cur) => cur.map((x, j) => j === i ? { ...x, price: e.target.value } : x)); setSavedOk(false); }} />
                     <select value={a.addon_product_id || ''} onChange={(e) => {
-                      /* Ao ligar uma peça real, o nome do adicional passa a ser o
-                         nome dela: é o que casa a FOTO no "Monte seu conjunto" do
-                         site (e mostra o nome certo pro cliente, em vez de "1"). */
+                      /* Ao ligar uma peça real, o adicional herda o NOME dela
+                         (casa a foto no "Monte seu conjunto" e mostra o nome
+                         certo pro cliente) e o PREÇO dela (o valor cobrado p/
+                         adicionar). Os dois ficam editáveis depois. */
                       const novoId = e.target.value || null;
                       const prod = novoId ? catalogo.find((c) => c.id === novoId) : null;
-                      setAddons((cur) => cur.map((x, j) => j === i ? { ...x, addon_product_id: novoId, name: prod ? prod.name : x.name } : x));
+                      setAddons((cur) => cur.map((x, j) => j === i ? {
+                        ...x, addon_product_id: novoId,
+                        name: prod ? prod.name : x.name,
+                        price: prod && prod.price != null ? prod.price : x.price,
+                      } : x));
                       setSavedOk(false);
                     }}>
                       <option value="">sem estoque (serviço)</option>
