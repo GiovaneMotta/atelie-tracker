@@ -12,6 +12,7 @@ import type { Handler } from '@netlify/functions';
 import { withHttp, json, parseBody, badRequest, notFound } from '../lib/http';
 import { requirePermission } from '../lib/auth';
 import { admin } from '../lib/supabaseAdmin';
+import { isTestOrder } from '../lib/testOrder';
 
 const CARD_SELECT = '*, customer:customers(name), pedido:orders(number)';
 
@@ -52,6 +53,11 @@ export const handler: Handler = withHttp(async (event) => {
     const ctx = await requirePermission(event, 'production.write');
     const body = parseBody<any>(event);
     if (!body.title || String(body.title).trim() === '') throw badRequest('Informe um título.');
+    // Isolamento: pedido de TESTE (canal 'teste') não entra na produção.
+    if (body.order_id) {
+      const { data: ord } = await sb.from('orders').select('channel').eq('id', body.order_id).maybeSingle();
+      if (isTestOrder(ord)) throw badRequest('Pedido de teste não vai para a produção.');
+    }
     const sectors = await loadSectors();
     const first = sectors[0];
     const { data: card, error } = await sb.from('production_cards').insert({

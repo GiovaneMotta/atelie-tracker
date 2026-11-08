@@ -26,14 +26,17 @@
      META_PIXEL_ID       opcional — por padrão usa o Pixel gravado em
                          app_settings (tela Marketing do painel)
      META_API_VERSION    opcional (padrão v26.0)
-     META_TEST_EVENT_CODE opcional — manda como evento de teste, que
-                          aparece em "Eventos de teste" sem sujar os
-                          dados reais. Use para validar e depois apague.
+     META_TEST_EVENT_CODE opcional — aplica-se SOMENTE a pedidos de
+                          TESTE (canal 'teste'); esses aparecem em
+                          "Eventos de teste" sem sujar os dados reais.
+                          Pedidos reais ignoram o código e enviam o
+                          Purchase normalmente. Ver lib/testOrder.ts.
    ================================================================ */
 import type { Handler } from '@netlify/functions';
 import { withHttp, json, parseBody, badRequest } from '../lib/http';
 import { requirePermission } from '../lib/auth';
 import { admin } from '../lib/supabaseAdmin';
+import { shouldUseTestCode } from '../lib/testOrder';
 
 const VERSAO_PADRAO = 'v26.0';
 
@@ -154,7 +157,9 @@ export async function enviarPurchase(orderId: string, env: Record<string, string
         num_items: itens.reduce((n, i) => n + (Number(i.quantity) || 0), 0),
       },
     }],
-    ...(env.META_TEST_EVENT_CODE ? { test_event_code: env.META_TEST_EVENT_CODE } : {}),
+    // test_event_code SÓ para pedido de teste (canal 'teste'): isola a
+    // validação sem desviar o Purchase de nenhuma venda real.
+    ...(shouldUseTestCode(pedido, env) ? { test_event_code: env.META_TEST_EVENT_CODE } : {}),
   };
 
   const versao = env.META_API_VERSION || VERSAO_PADRAO;

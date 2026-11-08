@@ -12,6 +12,7 @@ import { withHttp, json, parseBody, badRequest, notFound } from '../lib/http';
 import { getAuth, requirePermission } from '../lib/auth';
 import { admin } from '../lib/supabaseAdmin';
 import { writeAudit } from '../lib/audit';
+import { isTestOrder } from '../lib/testOrder';
 import type { AuthContext } from '../lib/auth';
 
 const onlyDigits = (s: unknown) => String(s ?? '').replace(/\D/g, '');
@@ -63,7 +64,7 @@ export const handler: Handler = withHttp(async (event) => {
         const { data: o } = await sb.from('orders')
           .select('id, number, total, status, payment_status, created_at, channel')
           .eq('customer_id', id).order('created_at', { ascending: false }).limit(100);
-        orders = o ?? [];
+        orders = (o ?? []).filter((r) => !isTestOrder(r));
       }
       return json(event, 200, { customer: shapeCustomer(data, ctx), addresses: addresses ?? [], orders });
     }
@@ -86,10 +87,10 @@ export const handler: Handler = withHttp(async (event) => {
     if (ctx.has('orders.read') && rows.length) {
       const ids = rows.map((r: any) => r.id);
       const { data: ords } = await sb.from('orders')
-        .select('customer_id, total, status, payment_status, created_at').in('customer_id', ids).limit(5000);
+        .select('customer_id, total, status, payment_status, created_at, channel').in('customer_id', ids).limit(5000);
       const agg = new Map<string, { n: number; spent: number; last: string | null }>();
       for (const o of ords ?? []) {
-        if (!o.customer_id) continue;
+        if (!o.customer_id || isTestOrder(o)) continue;
         const a = agg.get(o.customer_id) || { n: 0, spent: 0, last: null };
         if (o.status !== 'cancelado') a.n++;
         if (o.payment_status === 'pago' && o.status !== 'cancelado') a.spent += Number(o.total) || 0;

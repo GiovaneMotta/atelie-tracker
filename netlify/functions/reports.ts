@@ -8,6 +8,7 @@ import type { Handler } from '@netlify/functions';
 import { withHttp, json, badRequest } from '../lib/http';
 import { requirePermission } from '../lib/auth';
 import { admin } from '../lib/supabaseAdmin';
+import { isTestOrder } from '../lib/testOrder';
 
 const DAY = 864e5, BRT = -180, r2 = (n: number) => Math.round(n * 100) / 100;
 const CANCELLED = 'cancelado';
@@ -38,7 +39,8 @@ export const handler: Handler = withHttp(async (event) => {
   const { data: ordersData } = await sb.from('orders')
     .select('id,total,status,payment_status,channel,created_at,customer_id')
     .gte('created_at', R.from.toISOString()).lte('created_at', R.to.toISOString()).limit(10000);
-  const orders = ordersData || [];
+  // Pedidos de teste (canal 'teste') ficam fora de todo relatório.
+  const orders = (ordersData || []).filter((o) => !isTestOrder(o));
   const notCancel = orders.filter((o) => o.status !== CANCELLED);
   const paid = notCancel.filter((o) => o.payment_status === 'pago');
   const revenue = r2(paid.reduce((s, o) => s + (Number(o.total) || 0), 0));

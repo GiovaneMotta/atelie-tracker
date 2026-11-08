@@ -11,6 +11,7 @@ import type { Handler } from '@netlify/functions';
 import { withHttp, json, badRequest } from '../lib/http';
 import { getAuth } from '../lib/auth';
 import { admin } from '../lib/supabaseAdmin';
+import { isTestOrder } from '../lib/testOrder';
 
 const DAY = 24 * 3600 * 1000;
 const BRT = -180; // Brasil (UTC-3), sem horário de verão
@@ -84,7 +85,8 @@ export const handler: Handler = withHttp(async (event) => {
       .gte('created_at', R.prevFrom.toISOString()).lte('created_at', R.to.toISOString())
       .order('created_at', { ascending: false }).limit(5000);
     if (error) throw badRequest(error.message);
-    const all = (ordersData ?? []) as OrderRow[];
+    // Pedidos de teste nunca entram em faturamento, ticket, itens, canais etc.
+    const all = ((ordersData ?? []) as OrderRow[]).filter((o) => !isTestOrder(o));
     const cur = all.filter((o) => o.created_at >= R.from.toISOString());
     const prev = all.filter((o) => o.created_at >= R.prevFrom.toISOString() && o.created_at < R.from.toISOString());
 
@@ -152,9 +154,9 @@ export const handler: Handler = withHttp(async (event) => {
     out.revenue_series = { days, current: serie(cur, R.from), previous: serie(prev, R.prevFrom) };
 
     // operação: pedidos por status (todos os abertos, não só do período)
-    const { data: allStatus } = await sb.from('orders').select('status').limit(10000);
+    const { data: allStatus } = await sb.from('orders').select('status,channel').limit(10000);
     const byStatus: Record<string, number> = {};
-    for (const o of allStatus ?? []) byStatus[o.status] = (byStatus[o.status] || 0) + 1;
+    for (const o of allStatus ?? []) { if (isTestOrder(o)) continue; byStatus[o.status] = (byStatus[o.status] || 0) + 1; }
     out.by_status = byStatus;
 
     // atenção necessária
@@ -165,9 +167,9 @@ export const handler: Handler = withHttp(async (event) => {
 
     // pedidos recentes (com cliente + resumo dos itens)
     const { data: recent } = await sb.from('orders')
-      .select('id,number,total,status,payment_status,created_at,customer:customers(name),items:order_items(name,quantity)')
-      .order('created_at', { ascending: false }).limit(6);
-    out.recent_orders = (recent ?? []).map((o: any) => ({
+      .select('id,number,total,status,payment_status,created_at,channel,customer:customers(name),items:order_items(name,quantity)')
+      .order('created_at', { ascending: false }).limit(12);
+    out.recent_orders = (recent ?? []).filter((o: any) => !isTestOrder(o)).slice(0, 6).map((o: any) => ({
       id: o.id, number: o.number, total: o.total, status: o.status, payment_status: o.payment_status,
       created_at: o.created_at, customer: o.customer?.name || null,
       resumo: (o.items || []).map((i: any) => i.name).slice(0, 2).join(', ') + ((o.items?.length || 0) > 2 ? '…' : ''),
