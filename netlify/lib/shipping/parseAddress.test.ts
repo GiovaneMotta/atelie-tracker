@@ -28,4 +28,21 @@ describe('parseAddressHeuristic (modo grátis)', () => {
     const r = parseAddressHeuristic('João Pedro, Rua A 10, 65900-000');
     expect(r.document).toBeUndefined();
   });
+
+  it('entende formato ROTULADO multi-linha do WhatsApp (nome, número, complemento)', () => {
+    const r = parseAddressHeuristic([
+      'Oi boa tarde! Seguem meus dados:',
+      'Nome: Mariana Teste CRM',
+      'Whatsapp: (98) 98888-7766',
+      'CEP: 65020-570',
+      'Rua Grande, 456 - apto 302',
+      'Centro - São Luís/MA',
+    ].join('\n'));
+    expect(r.name).toBe('Mariana Teste CRM');
+    expect(r.phone).toBe('98988887766');
+    expect(r.cep).toBe('65020570');
+    expect(r.number).toBe('456');
+    expect(r.complement?.toLowerCase()).toContain('apto 302');
+    expect(r.state).toBe('MA');
+  });
 });

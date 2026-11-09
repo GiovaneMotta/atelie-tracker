@@ -1,8 +1,12 @@
 /* ================================================================
    shipping/parseAddress — extração HEURÍSTICA (grátis, sem IA) dos
    dados do destinatário a partir de um texto colado (ex.: WhatsApp).
-   Puxa CEP, CPF/CNPJ, telefone, nome e número; rua/bairro/cidade/UF
-   vêm depois do ViaCEP (pelo CEP). Pura e testável.
+   Puxa CEP, CPF/CNPJ, telefone, nome, número e complemento; rua/bairro/
+   cidade/UF podem vir depois do ViaCEP (pelo CEP). Pura e testável.
+
+   Entende DOIS estilos:
+   - linha única "Nome, CPF, telefone, Rua X 123, Bairro, Cidade-UF, CEP";
+   - linhas ROTULADAS "Nome: …", "WhatsApp: …", "CEP: …", "Número: …".
    Não inventa dados: só extrai o que está no texto.
    ================================================================ */
 import { onlyDigits, isValidDocument } from './normalize';
@@ -15,17 +19,35 @@ export interface ParsedRecipient {
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
+/** Mapa "Rótulo: valor" por linha, normalizado (sem acento/º/pontuação). */
+function labelMap(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split('\n')) {
+    const m = line.match(/^\s*([^:]{1,30}?)\s*:\s*(\S.*)$/);
+    if (!m) continue;
+    const key = m[1].normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/[º°ª.]/g, '').replace(/\s+/g, ' ').trim();
+    for (const part of key.split(/[\/|]/).map((s) => s.trim())) {
+      if (part && !(part in out)) out[part] = m[2].trim();
+    }
+  }
+  return out;
+}
+
 export function parseAddressHeuristic(input: string): ParsedRecipient {
   const text = String(input || '').replace(/\r/g, '');
   const out: ParsedRecipient = {};
   let work = ` ${text} `;
+  const L = labelMap(text);
+  const lbl = (...keys: string[]) => { for (const k of keys) if (L[k]) return L[k]; return ''; };
 
-  // CEP -------------------------------------------------------------
-  const cep = work.match(/\b(\d{5})[-.\s]?(\d{3})\b/);
+  // CEP (rótulo tem prioridade) ------------------------------------
+  const cep = (lbl('cep') || work).match(/\b(\d{5})[-.\s]?(\d{3})\b/);
   if (cep) { out.cep = cep[1] + cep[2]; work = work.replace(cep[0], ' '); }
 
   // Telefone (DDD; celular 9 dígitos). Rótulo ajuda, mas é opcional. --
-  const phone = work.match(/(?:tel(?:efone)?|fone|whats(?:app)?|cel(?:ular)?)?\s*:?\s*(\(?\d{2}\)?\s?9?\d{4}[-.\s]?\d{4})\b/i);
+  const telSrc = lbl('telefone', 'tel', 'fone', 'whatsapp', 'whats', 'celular', 'cel', 'contato', 'zap') || work;
+  const phone = telSrc.match(/(\(?\d{2}\)?\s?9?\d{4}[-.\s]?\d{4})\b/);
   if (phone) {
     const p = onlyDigits(phone[1]);
     if (p.length >= 10 && p.length <= 11) { out.phone = p; work = work.replace(phone[1], ' '); }
@@ -41,13 +63,27 @@ export function parseAddressHeuristic(input: string): ParsedRecipient {
   }
   if (isValidDocument(doc)) out.document = doc;
 
-  // UF -------------------------------------------------------------
-  const uf = work.match(new RegExp(`[-/,\\s]\\s*(${UFS.join('|')})\\b`));
-  if (uf) out.state = uf[1].toUpperCase();
+  // Bairro / Cidade / UF por rótulo --------------------------------
+  if (lbl('bairro')) out.district = lbl('bairro');
+  if (lbl('cidade', 'municipio')) out.city = lbl('cidade', 'municipio');
+  const ufLbl = (lbl('estado', 'uf') || '').toUpperCase();
+  if (UFS.includes(ufLbl)) out.state = ufLbl;
 
-  // Rua + número por palavra-chave de logradouro --------------------
-  const streetLine = text.split(/[\n,]/).map((s) => s.trim())
-    .find((s) => /^(rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|al\.?|estrada|rod(?:ovia)?|quadra|qd|pra[çc]a)\b/i.test(s));
+  // UF heurística (se não veio por rótulo) -------------------------
+  if (!out.state) {
+    const uf = work.match(new RegExp(`[-/,\\s]\\s*(${UFS.join('|')})\\b`));
+    if (uf) out.state = uf[1].toUpperCase();
+  }
+
+  // Rua + número ---------------------------------------------------
+  const ruaLbl = lbl('endereco', 'rua', 'avenida', 'av', 'logradouro', 'end');
+  const segs = text.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+  let streetLine = ruaLbl;
+  let streetIdx = -1;
+  if (!streetLine) {
+    streetIdx = segs.findIndex((s) => /^(rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|al\.?|estrada|rod(?:ovia)?|quadra|qd|pra[çc]a)\b/i.test(s));
+    if (streetIdx >= 0) streetLine = segs[streetIdx];
+  }
   if (streetLine) {
     out.street = streetLine
       .replace(/\s*,?\s*n[º°o]?\.?\s*\d+.*$/i, '')   // "nº 123 ..."
@@ -56,19 +92,36 @@ export function parseAddressHeuristic(input: string): ParsedRecipient {
       .trim();
     const num = streetLine.match(/n[º°o]?\.?\s*(\d{1,6})\b/i)
       || streetLine.match(/,\s*(\d{1,6})\b/)
-      || streetLine.match(/\s(\d{1,6})\s*$/);         // número solto no fim da linha
+      || streetLine.match(/\s(\d{1,6})\s*$/);
     if (num) out.number = num[1];
+    // Número órfão no segmento seguinte: "Rua Grande, 456" (a vírgula separou).
+    if (!out.number && streetIdx >= 0 && segs[streetIdx + 1]) {
+      const m2 = segs[streetIdx + 1].match(/^\s*(\d{1,6})\b/);
+      if (m2) out.number = m2[1];
+    }
   }
-  if (!out.number) {
-    const numAny = text.match(/\bn[º°o]\.?\s*(\d{1,6})\b/i);
-    if (numAny) out.number = numAny[1];
+  // Número por rótulo tem prioridade.
+  const numLbl = lbl('numero', 'num', 'n');
+  if (numLbl) { const d = numLbl.match(/\d{1,6}[A-Za-z]?/); if (d) out.number = d[0]; }
+
+  // Complemento (rótulo ou palavra-chave: apto/bloco/casa/…) -------
+  const compLbl = lbl('complemento', 'compl', 'comp');
+  if (compLbl) out.complement = compLbl;
+  else {
+    const cm = text.match(/\b(apto?\.?|ap\.?|apartamento|bloco|bl\.?|casa|lote|lt\.?|quadra|qd\.?|fundos?|sala|andar)\b[^\n,]*/i);
+    if (cm) out.complement = cm[0].trim();
   }
 
-  // Nome: primeira linha "de nome" (2+ palavras, só letras) ---------
-  const firstLine = text.split(/\n/).map((s) => s.trim()).find(Boolean) || '';
-  const nameCand = firstLine.split(/[,;:]/)[0].trim();
-  if (/^[\p{L}'.\s]{4,60}$/u.test(nameCand) && nameCand.split(/\s+/).length >= 2 && !/^(rua|av|avenida)/i.test(nameCand)) {
-    out.name = nameCand;
+  // Nome: rótulo, senão a primeira linha "de nome" (2+ palavras, letras) --
+  const nomeLbl = lbl('nome', 'cliente', 'comprador', 'compradora', 'nome completo', 'nome do cliente');
+  if (nomeLbl && /^[\p{L}'.\s]{2,60}$/u.test(nomeLbl)) {
+    out.name = nomeLbl.replace(/\s+/g, ' ').trim();
+  } else {
+    const firstLine = text.split(/\n/).map((s) => s.trim()).find(Boolean) || '';
+    const nameCand = firstLine.split(/[,;:]/)[0].trim();
+    if (/^[\p{L}'.\s]{4,60}$/u.test(nameCand) && nameCand.split(/\s+/).length >= 2 && !/^(rua|av|avenida)/i.test(nameCand)) {
+      out.name = nameCand;
+    }
   }
 
   return out;
