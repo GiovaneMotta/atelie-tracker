@@ -45,4 +45,16 @@ describe('parseAddressHeuristic (modo grátis)', () => {
     expect(r.complement?.toLowerCase()).toContain('apto 302');
     expect(r.state).toBe('MA');
   });
+
+  it('não confunde CPF sem pontuação com telefone; usa o rótulo "Telefone para contato"', () => {
+    const r = parseAddressHeuristic([
+      'CEP: 30421-422',
+      'CPF: 10549523618',
+      'Endereço: rua santos, 1495, ap 302',
+      'Telefone para contato: 31985480518',
+    ].join('\n'));
+    expect(r.phone).toBe('31985480518');
+    expect(r.number).toBe('1495');
+    expect(r.complement?.toLowerCase()).toContain('ap 302');
+  });
 });

@@ -40,28 +40,37 @@ export function parseAddressHeuristic(input: string): ParsedRecipient {
   let work = ` ${text} `;
   const L = labelMap(text);
   const lbl = (...keys: string[]) => { for (const k of keys) if (L[k]) return L[k]; return ''; };
+  // rótulo cujo nome CONTÉM a palavra (ex.: "telefone para contato" → telefone)
+  const lblLike = (...words: string[]) => { for (const k of Object.keys(L)) if (words.some((w) => k.includes(w))) return L[k]; return ''; };
 
   // CEP (rótulo tem prioridade) ------------------------------------
   const cep = (lbl('cep') || work).match(/\b(\d{5})[-.\s]?(\d{3})\b/);
   if (cep) { out.cep = cep[1] + cep[2]; work = work.replace(cep[0], ' '); }
 
-  // Telefone (DDD; celular 9 dígitos). Rótulo ajuda, mas é opcional. --
-  const telSrc = lbl('telefone', 'tel', 'fone', 'whatsapp', 'whats', 'celular', 'cel', 'contato', 'zap') || work;
+  // CPF/CNPJ — ANTES do telefone e REMOVIDO do texto, senão os 11 dígitos de
+  // um CPF sem pontuação viram "telefone". Rótulo tem prioridade.
+  let docRaw = '';
+  const labeledDoc = text.match(/(?:cpf|cnpj)\s*:?\s*(\d[\d.\-/ ]{9,18}\d)/i);
+  if (labeledDoc) docRaw = labeledDoc[1];
+  else {
+    const cnpj = work.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
+    const cpf = work.match(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/);
+    docRaw = cnpj?.[0] || cpf?.[0] || '';
+  }
+  if (docRaw) {
+    work = work.split(docRaw).join(' ');
+    const doc = onlyDigits(docRaw);
+    if (isValidDocument(doc)) out.document = doc;
+  }
+
+  // Telefone (DDD; celular 9 dígitos). Rótulo que CONTÉM telefone/whatsapp/…
+  // tem prioridade; senão procura no texto (já sem CEP e sem documento).
+  const telSrc = lblLike('telefone', 'whatsapp', 'celular', 'fone', 'contato', 'zap', 'tel', 'cel') || work;
   const phone = telSrc.match(/(\(?\d{2}\)?\s?9?\d{4}[-.\s]?\d{4})\b/);
   if (phone) {
     const p = onlyDigits(phone[1]);
     if (p.length >= 10 && p.length <= 11) { out.phone = p; work = work.replace(phone[1], ' '); }
   }
-
-  // CPF/CNPJ (rótulo tem prioridade; senão, grupo de 11/14 dígitos) --
-  const labeled = work.match(/(?:cpf|cnpj)\s*:?\s*([\d.\-/]{11,18})/i);
-  let doc = labeled ? onlyDigits(labeled[1]) : '';
-  if (!isValidDocument(doc)) {
-    const cnpj = work.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
-    const cpf = work.match(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/);
-    doc = onlyDigits(cnpj?.[0] || cpf?.[0] || '');
-  }
-  if (isValidDocument(doc)) out.document = doc;
 
   // Bairro / Cidade / UF por rótulo --------------------------------
   if (lbl('bairro')) out.district = lbl('bairro');
