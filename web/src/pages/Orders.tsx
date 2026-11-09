@@ -1,15 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { formatBRL, formatDate, ORDER_STATUS, displaySrc, thumbSrc } from '../lib/format';
+import {
+  formatBRL, formatDate, ORDER_STATUS, ORDER_STATUS_TONE,
+  PAYMENT_STATUS, PAYMENT_STATUS_TONE, pillClass, displaySrc, thumbSrc,
+} from '../lib/format';
 
-interface OrderRow { id: string; number: number; total: number; status: string; channel: string | null; created_at: string; customer: { name: string } | null; }
+interface OrderRow { id: string; number: number; total: number; status: string; payment_status: string; channel: string | null; created_at: string; customer: { name: string } | null; }
 
 const CHANNEL_LABEL: Record<string, string> = {
-  site: 'Site', catalogo: 'Site', whatsapp: 'WhatsApp', inbox: 'WhatsApp', manual: 'Manual',
+  site: 'Site', catalogo: 'Site', whatsapp: 'WhatsApp', inbox: 'WhatsApp', manual: 'Manual', teste: 'Teste',
 };
 const channelLabel = (c: string | null) => (c ? (CHANNEL_LABEL[c] || c) : '—');
+/** Agrupa os canais do banco em origens que a loja usa de verdade. */
+const origemGrupo = (c: string | null): string => {
+  if (c === 'site' || c === 'catalogo') return 'site';
+  if (c === 'whatsapp' || c === 'inbox') return 'whatsapp';
+  if (c === 'manual') return 'manual';
+  return 'outros';
+};
 
 export default function Orders() {
   const { can } = useAuth();
@@ -18,6 +29,13 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Busca, filtros e ordenação — tudo no cliente; não altera a API nem o backend.
+  const [q, setQ] = useState('');
+  const [fStatus, setFStatus] = useState('todos');
+  const [fOrigem, setFOrigem] = useState('todos');
+  const [fPeriodo, setFPeriodo] = useState('todos');
+  const [sort, setSort] = useState('data_desc');
 
   async function load() {
     setLoading(true);
@@ -28,28 +46,94 @@ export default function Orders() {
   }
   useEffect(() => { load(); }, []);
 
+  const view = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    const now = Date.now();
+    const DAY = 864e5;
+    const periodoOk = (iso: string) => {
+      if (fPeriodo === 'todos') return true;
+      const t = new Date(iso).getTime();
+      if (fPeriodo === 'hoje') { const d = new Date(); d.setHours(0, 0, 0, 0); return t >= d.getTime(); }
+      if (fPeriodo === '7d') return t >= now - 7 * DAY;
+      if (fPeriodo === '30d') return t >= now - 30 * DAY;
+      if (fPeriodo === 'mes') { const d = new Date(); return t >= new Date(d.getFullYear(), d.getMonth(), 1).getTime(); }
+      return true;
+    };
+    const rows = list.filter((o) => {
+      if (fStatus !== 'todos' && o.status !== fStatus) return false;
+      if (fOrigem !== 'todos' && origemGrupo(o.channel) !== fOrigem) return false;
+      if (!periodoOk(o.created_at)) return false;
+      if (term && !`#${o.number} ${o.customer?.name || ''}`.toLowerCase().includes(term)) return false;
+      return true;
+    });
+    return [...rows].sort((a, b) => {
+      if (sort === 'valor_desc') return (b.total || 0) - (a.total || 0);
+      if (sort === 'valor_asc') return (a.total || 0) - (b.total || 0);
+      if (sort === 'data_asc') return a.created_at.localeCompare(b.created_at);
+      return b.created_at.localeCompare(a.created_at);
+    });
+  }, [list, q, fStatus, fOrigem, fPeriodo, sort]);
+
+  const pagos = view.filter((o) => o.payment_status === 'pago').length;
+  const pendentes = view.filter((o) => o.payment_status !== 'pago' && o.status !== 'cancelado').length;
+
   if (creating) return <NewOrder onCancel={() => setCreating(false)} onCreated={(id) => navigate(`/pedidos/${id}`)} />;
 
   return (
     <div className="page">
       <div className="page-head">
-        <div><h1>Pedidos</h1><p className="muted">{loading ? 'Carregando…' : `${list.length} pedido(s)`}</p></div>
+        <div>
+          <h1>Pedidos</h1>
+          <p className="muted">{loading ? 'Carregando…' : `${view.length} de ${list.length} pedido(s) · ${pagos} pago(s) · ${pendentes} pendente(s)`}</p>
+        </div>
         {can('orders.write') && <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Novo pedido</button>}
       </div>
       {error && <div className="alert-error">{error}</div>}
+
+      <div className="filters" style={{ marginBottom: 16 }}>
+        <label className="search"><Search size={16} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nº ou cliente…" /></label>
+        <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} aria-label="Filtrar por status">
+          <option value="todos">Todos os status</option>
+          {Object.keys(ORDER_STATUS).map((s) => <option key={s} value={s}>{ORDER_STATUS[s]}</option>)}
+        </select>
+        <select value={fOrigem} onChange={(e) => setFOrigem(e.target.value)} aria-label="Filtrar por origem">
+          <option value="todos">Todas as origens</option>
+          <option value="site">Site</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="manual">Manual</option>
+          <option value="outros">Outros</option>
+        </select>
+        <select value={fPeriodo} onChange={(e) => setFPeriodo(e.target.value)} aria-label="Filtrar por período">
+          <option value="todos">Qualquer data</option>
+          <option value="hoje">Hoje</option>
+          <option value="7d">Últimos 7 dias</option>
+          <option value="30d">Últimos 30 dias</option>
+          <option value="mes">Mês atual</option>
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Ordenar">
+          <option value="data_desc">Mais recentes</option>
+          <option value="data_asc">Mais antigos</option>
+          <option value="valor_desc">Maior valor</option>
+          <option value="valor_asc">Menor valor</option>
+        </select>
+      </div>
+
       <div className="card table-card">
         <table className="table">
-          <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Origem</th><th>Status</th><th>Data</th></tr></thead>
+          <thead><tr><th>#</th><th>Cliente</th><th className="right">Total</th><th>Pagamento</th><th>Status</th><th>Origem</th><th>Data</th></tr></thead>
           <tbody>
-            {!loading && list.length === 0 && <tr><td colSpan={6} className="muted center">Nenhum pedido ainda.</td></tr>}
-            {list.map((o) => (
+            {!loading && view.length === 0 && (
+              <tr><td colSpan={7} className="muted center">{list.length ? 'Nenhum pedido com esses filtros.' : 'Nenhum pedido ainda.'}</td></tr>
+            )}
+            {view.map((o) => (
               <tr key={o.id} className="row-link" onClick={() => navigate(`/pedidos/${o.id}`)}>
                 <td className="mono">#{o.number}</td>
                 <td>{o.customer?.name || '—'}</td>
-                <td>{formatBRL(o.total)}</td>
+                <td className="right mono">{formatBRL(o.total)}</td>
+                <td><span className={pillClass(PAYMENT_STATUS_TONE[o.payment_status])}>{PAYMENT_STATUS[o.payment_status] || o.payment_status || '—'}</span></td>
+                <td><span className={pillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS[o.status] || o.status}</span></td>
                 <td><span className="badge">{channelLabel(o.channel)}</span></td>
-                <td><span className="badge">{ORDER_STATUS[o.status] || o.status}</span></td>
-                <td>{formatDate(o.created_at)}</td>
+                <td className="mono">{formatDate(o.created_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -103,6 +187,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
   const [lines, setLines] = useState<Line[]>([]);
   const [discount, setDiscount] = useState('');
   const [notes, setNotes] = useState('');
+  const [teste, setTeste] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -187,6 +272,8 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
         })),
         discount: parseFloat(discount.replace(',', '.')) || 0,
         notes: notes || null,
+        // Pedido de teste: canal 'teste' isola do faturamento/relatórios e do Purchase real.
+        channel: teste ? 'teste' : undefined,
       };
       const data = await apiFetch<{ order: { id: string } }>('/api/orders', { method: 'POST', body: JSON.stringify(payload) });
       onCreated(data.order.id);
@@ -289,6 +376,10 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
       <div className="card form-grid">
         <label className="field"><span>Desconto (R$)</span><input value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0,00" /></label>
         <label className="field span-all"><span>Observações</span><input value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+        <label className="field-check span-all">
+          <input type="checkbox" checked={teste} onChange={(e) => setTeste(e.target.checked)} />
+          <span>Pedido de teste — fica fora de faturamento/relatórios e só ele dispara o Purchase em modo de teste (Meta).</span>
+        </label>
       </div>
 
       <div className="card totals">

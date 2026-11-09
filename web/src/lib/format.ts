@@ -35,6 +35,47 @@ export const ORDER_STATUS: Record<string, string> = {
   cancelado: 'Cancelado',
 };
 
+/** Tom visual (pill) de cada status de pedido — APENAS apresentação. */
+export const ORDER_STATUS_TONE: Record<string, string> = {
+  rascunho: 'muted',
+  em_atendimento: 'info',
+  aguardando_pagamento: 'warn',
+  pago: 'ok',
+  aguardando_endereco: 'warn',
+  aguardando_etiqueta: 'warn',
+  etiqueta_gerada: 'info',
+  postado: 'info',
+  em_transito: 'info',
+  saiu_entrega: 'info',
+  entregue: 'ok',
+  problema: 'bad',
+  pos_venda: 'ok',
+  cancelado: 'bad',
+};
+
+/** Pagamento: rótulo humano e tom visual (pill). Apenas apresentação. */
+export const PAYMENT_STATUS: Record<string, string> = {
+  pago: 'Pago',
+  pendente: 'Aguardando',
+  aguardando: 'Aguardando',
+  estornado: 'Estornado',
+  reembolsado: 'Reembolsado',
+  falhou: 'Falhou',
+};
+export const PAYMENT_STATUS_TONE: Record<string, string> = {
+  pago: 'ok',
+  pendente: 'warn',
+  aguardando: 'warn',
+  estornado: 'bad',
+  reembolsado: 'muted',
+  falhou: 'bad',
+};
+
+/** Classe de pill a partir do tom ('ok'|'warn'|'info'|'bad'|'muted'). */
+export function pillClass(tone: string | undefined): string {
+  return tone && tone !== 'muted' ? `pill pill-${tone}` : 'pill';
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });

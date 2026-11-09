@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  DollarSign, ShoppingBag, BarChart2, Package,
+  DollarSign, ShoppingBag, BarChart2, Package, Users,
   TrendingUp, TrendingDown, Truck, Boxes, RefreshCw,
   ArrowRight, Info,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../lib/api';
-import { formatBRL, formatDate, ORDER_STATUS } from '../lib/format';
+import { formatBRL, formatDate, ORDER_STATUS, ORDER_STATUS_TONE, PAYMENT_STATUS, PAYMENT_STATUS_TONE, pillClass } from '../lib/format';
 
 /* ---------- tipos ---------- */
 interface Metric { value: number; prev?: number; has_prev?: boolean; }
@@ -32,14 +32,6 @@ const PERIODS: { v: string; l: string }[] = [
   { v: 'mes_anterior', l: 'Mês anterior' }, { v: '3m', l: 'Últimos 3 meses' },
 ];
 
-const ORDER_TONE: Record<string, string> = {
-  pago: 'pill-ok', entregue: 'pill-ok', pos_venda: 'pill-ok',
-  aguardando_endereco: 'pill-warn', aguardando_etiqueta: 'pill-warn',
-  etiqueta_gerada: 'pill-info', postado: 'pill-info', em_transito: 'pill-info', saiu_entrega: 'pill-info',
-  problema: 'pill-bad', cancelado: 'pill-bad',
-};
-const PAY_TONE: Record<string, string> = { pago: 'pill-ok', estornado: 'pill-bad', falhou: 'pill-bad' };
-const PAY_LABEL: Record<string, string> = { pago: 'Pago', pendente: 'Aguardando', estornado: 'Estornado', falhou: 'Falhou' };
 const STATUS_ORDER = ['aguardando_pagamento', 'pago', 'aguardando_etiqueta', 'etiqueta_gerada', 'postado', 'em_transito', 'entregue', 'cancelado'];
 const STATUS_DOT: Record<string, string> = {
   aguardando_pagamento: 'var(--ink-faint)', pago: 'var(--ok)', aguardando_etiqueta: 'var(--warn)',
@@ -133,16 +125,18 @@ export default function Dashboard() {
 
       {error && <div className="alert-error">{error}</div>}
 
-      {/* KPIs */}
-      <div className="stat-strip">
-        <div className="stat"><div className="stat-lb"><DollarSign /> Faturamento</div>
-          <div className="stat-vl">{sales ? formatBRL(sales.revenue.value) : '—'}</div><Delta m={sales?.revenue} /></div>
-        <div className="stat"><div className="stat-lb"><ShoppingBag /> Pedidos</div>
-          <div className="stat-vl">{sales ? sales.orders.value : '—'}</div><Delta m={sales?.orders} /></div>
-        <div className="stat"><div className="stat-lb"><BarChart2 /> Ticket médio</div>
-          <div className="stat-vl">{sales ? formatBRL(sales.ticket.value) : '—'}</div><Delta m={sales?.ticket} /></div>
-        <div className="stat"><div className="stat-lb"><Package /> Itens vendidos</div>
-          <div className="stat-vl">{sales ? sales.items.value : '—'}</div></div>
+      {/* KPIs — clicáveis, foco comercial (clientes novos incluído) */}
+      <div className="stat-strip cols-5">
+        <button className="stat" onClick={() => navigate('/financeiro')} title="Ver financeiro"><div className="stat-lb"><DollarSign /> Faturamento</div>
+          <div className="stat-vl">{sales ? formatBRL(sales.revenue.value) : '—'}</div><Delta m={sales?.revenue} /></button>
+        <button className="stat" onClick={() => navigate('/pedidos')} title="Ver pedidos"><div className="stat-lb"><ShoppingBag /> Pedidos</div>
+          <div className="stat-vl">{sales ? sales.orders.value : '—'}</div><Delta m={sales?.orders} /></button>
+        <button className="stat" onClick={() => navigate('/relatorios')} title="Ver relatórios"><div className="stat-lb"><BarChart2 /> Ticket médio</div>
+          <div className="stat-vl">{sales ? formatBRL(sales.ticket.value) : '—'}</div><Delta m={sales?.ticket} /></button>
+        <button className="stat" onClick={() => navigate('/clientes')} title="Ver clientes"><div className="stat-lb"><Users /> Clientes novos</div>
+          <div className="stat-vl">{sales ? sales.customers.value : '—'}</div></button>
+        <button className="stat" onClick={() => navigate('/relatorios')} title="Ver relatórios"><div className="stat-lb"><Package /> Itens vendidos</div>
+          <div className="stat-vl">{sales ? sales.items.value : '—'}</div></button>
       </div>
 
       {/* Atenção necessária */}
@@ -217,29 +211,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Estoque */}
-      <div className="sec-head"><h3>Estoque</h3><span className="link" onClick={() => navigate('/produtos')}>Ver produtos <ArrowRight /></span></div>
-      <div className="stock">
-        <div className="stk bad"><div className="stk-n">{d?.stock?.esgotados ?? '—'}</div><div className="stk-l">Esgotados</div></div>
-        <div className="stk warn"><div className="stk-n">{d?.stock?.inventory_configured ? (d?.stock?.baixo ?? 0) : '—'}</div><div className="stk-l">{d?.stock?.inventory_configured ? 'Estoque baixo' : 'Estoque não configurado'}</div></div>
-        <div className="stk ok"><div className="stk-n">{d?.stock?.disponiveis ?? '—'}</div><div className="stk-l">Disponíveis (ativos)</div></div>
-      </div>
-
-      {/* Funil (parcial — visitantes não conectados) */}
-      <div className="sec-head"><h3>Funil de vendas</h3></div>
-      <div className="pnl">
-        <div className="funnel">
-          <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Visitantes</div></div>
-          <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Viu produto</div></div>
-          <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Carrinho</div></div>
-          <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Checkout</div></div>
-          <div className="fn"><div className="fn-n">{sales?.orders.value ?? 0}</div><div className="fn-l">Compras</div></div>
-        </div>
-        <div className="note-soft"><Info /> Dados de visitantes ainda não conectados (GA4 / eventos do site). Quando conectarmos, o funil completo aparece aqui.</div>
-      </div>
-
-      {/* Pedidos recentes */}
-      <div className="sec-head"><h3>Pedidos recentes</h3><span className="link" onClick={() => navigate('/pedidos')}>Ver todos <ArrowRight /></span></div>
+      {/* Pedidos recentes — foco comercial, logo após vendas */}
+      <div className="sec-head gap"><h3>Pedidos recentes</h3><span className="link" onClick={() => navigate('/pedidos')}>Ver todos <ArrowRight /></span></div>
       <div className="card table-card">
         <table className="table">
           <thead><tr><th>Pedido</th><th>Cliente</th><th>Resumo</th><th>Data</th><th className="right">Valor</th><th>Pagamento</th><th>Status</th></tr></thead>
@@ -252,18 +225,42 @@ export default function Dashboard() {
                 <td className="muted">{o.resumo || '—'}</td>
                 <td className="mono">{formatDate(o.created_at)}</td>
                 <td className="right mono">{formatBRL(o.total)}</td>
-                <td><span className={`pill ${PAY_TONE[o.payment_status] || ''}`}>{PAY_LABEL[o.payment_status] || o.payment_status}</span></td>
-                <td><span className={`pill ${ORDER_TONE[o.status] || ''}`}>{ORDER_STATUS[o.status] || o.status}</span></td>
+                <td><span className={pillClass(PAYMENT_STATUS_TONE[o.payment_status])}>{PAYMENT_STATUS[o.payment_status] || o.payment_status}</span></td>
+                <td><span className={pillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS[o.status] || o.status}</span></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
+      {/* Funil — aparece só quando houver dados de visitantes (GA4) conectados */}
+      {d?.flags?.analytics_connected && (
+        <>
+          <div className="sec-head gap"><h3>Funil de vendas</h3></div>
+          <div className="pnl">
+            <div className="funnel">
+              <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Visitantes</div></div>
+              <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Viu produto</div></div>
+              <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Carrinho</div></div>
+              <div className="fn off"><div className="fn-n">—</div><div className="fn-l">Checkout</div></div>
+              <div className="fn"><div className="fn-n">{sales?.orders.value ?? 0}</div><div className="fn-l">Compras</div></div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Estoque — área secundária (operação) */}
+      <div className="sec-head gap"><h3>Estoque</h3><span className="link" onClick={() => navigate('/produtos')}>Ver produtos <ArrowRight /></span></div>
+      <div className="stock">
+        <div className="stk bad"><div className="stk-n">{d?.stock?.esgotados ?? '—'}</div><div className="stk-l">Esgotados</div></div>
+        <div className="stk warn"><div className="stk-n">{d?.stock?.inventory_configured ? (d?.stock?.baixo ?? 0) : '—'}</div><div className="stk-l">{d?.stock?.inventory_configured ? 'Estoque baixo' : 'Estoque não configurado'}</div></div>
+        <div className="stk ok"><div className="stk-n">{d?.stock?.disponiveis ?? '—'}</div><div className="stk-l">Disponíveis (ativos)</div></div>
+      </div>
+
       {/* Expedição (compacto) */}
       {ship && (
         <>
-          <div className="sec-head"><h3>Expedição</h3><span className="link" onClick={() => navigate('/envios')}>Envios <ArrowRight /></span></div>
+          <div className="sec-head gap"><h3>Expedição</h3><span className="link" onClick={() => navigate('/envios')}>Envios <ArrowRight /></span></div>
           <div className="stock">
             <div className="stk"><div className="stk-n">{ship.envios_hoje}</div><div className="stk-l">Envios hoje</div></div>
             <div className="stk warn"><div className="stk-n">{(ship.by_status?.['aguardando_confirmacao'] || 0) + (ship.by_status?.['cotado'] || 0) + (ship.by_status?.['rascunho'] || 0)}</div><div className="stk-l">Aguardando etiqueta</div></div>

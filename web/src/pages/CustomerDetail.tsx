@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { formatBRL, formatDate, ORDER_STATUS } from '../lib/format';
+import { formatBRL, formatDate, ORDER_STATUS, ORDER_STATUS_TONE, PAYMENT_STATUS, PAYMENT_STATUS_TONE, pillClass } from '../lib/format';
 
 interface Address {
   id: string; label: string | null; recipient: string | null; cep: string | null;
@@ -17,12 +17,6 @@ interface Customer {
   utm?: { source?: string | null; medium?: string | null; campaign?: string | null } | null;
 }
 interface Order { id: string; number: number; total: number; status: string; payment_status: string; created_at: string; channel: string | null; }
-
-const ORDER_TONE: Record<string, string> = {
-  pago: 'pill-ok', entregue: 'pill-ok', pos_venda: 'pill-ok',
-  aguardando_etiqueta: 'pill-warn', etiqueta_gerada: 'pill-info', postado: 'pill-info', em_transito: 'pill-info', saiu_entrega: 'pill-info',
-  problema: 'pill-bad', cancelado: 'pill-bad',
-};
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -62,14 +56,23 @@ export default function CustomerDetail() {
   const ticket = paid.length ? totalSpent / paid.length : 0;
   const ultima = orders[0]?.created_at || null;
   const primeira = orders.length ? orders[orders.length - 1].created_at : null;
+  const recorrente = paid.length >= 2;
+  const avgInterval = orders.length >= 2 && primeira && ultima
+    ? Math.round((new Date(ultima).getTime() - new Date(primeira).getTime()) / 864e5 / (orders.length - 1))
+    : null;
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
           <p className="crumb"><Link to="/clientes">← Clientes</Link></p>
-          <h1>{customer.name}</h1>
-          <p className="muted">{customer.orders_count} pedido(s) · Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(customer.total_spent)}</p>
+          <h1>
+            {customer.name}{' '}
+            {recorrente
+              ? <span className="pill pill-ok" style={{ verticalAlign: 'middle', fontSize: '.72rem' }}>Recorrente</span>
+              : nOrders >= 1 ? <span className="pill" style={{ verticalAlign: 'middle', fontSize: '.72rem' }}>Novo cliente</span> : null}
+          </h1>
+          <p className="muted">{nOrders} pedido(s) · Total {formatBRL(totalSpent)}{avgInterval ? ` · compra a cada ~${avgInterval} dias` : ''}</p>
         </div>
         {writable && <button className="btn btn-ghost" onClick={() => setEditing((v) => !v)}>{editing ? 'Cancelar' : 'Editar dados'}</button>}
       </div>
@@ -95,8 +98,8 @@ export default function CustomerDetail() {
 
       {!editing && (
         <div className="stat-strip" style={{ marginTop: 18 }}>
-          <div className="stat"><div className="stat-lb">Pedidos</div><div className="stat-vl">{nOrders}</div></div>
-          <div className="stat"><div className="stat-lb">Total gasto</div><div className="stat-vl">{formatBRL(totalSpent)}</div></div>
+          <div className="stat"><div className="stat-lb">Pedidos</div><div className="stat-vl">{nOrders}</div>{paid.length > 0 && <div className="trend flat" style={{ marginTop: 6 }}>{paid.length} pago(s)</div>}</div>
+          <div className="stat"><div className="stat-lb">Total gasto (LTV)</div><div className="stat-vl" style={{ color: 'var(--terracota-dark)' }}>{formatBRL(totalSpent)}</div></div>
           <div className="stat"><div className="stat-lb">Ticket médio</div><div className="stat-vl">{formatBRL(ticket)}</div></div>
           <div className="stat"><div className="stat-lb">Última compra</div><div className="stat-vl" style={{ fontSize: '1.1rem' }}>{ultima ? formatDate(ultima) : '—'}</div>{primeira && primeira !== ultima && <div className="trend flat" style={{ marginTop: 6 }}>1ª: {formatDate(primeira)}</div>}</div>
         </div>
@@ -117,8 +120,8 @@ export default function CustomerDetail() {
                         <td className="mono">#{o.number}</td>
                         <td className="mono">{formatDate(o.created_at)}</td>
                         <td className="right mono">{formatBRL(o.total)}</td>
-                        <td><span className={`pill ${o.payment_status === 'pago' ? 'pill-ok' : ''}`}>{o.payment_status}</span></td>
-                        <td><span className={`pill ${ORDER_TONE[o.status] || ''}`}>{ORDER_STATUS[o.status] || o.status}</span></td>
+                        <td><span className={pillClass(PAYMENT_STATUS_TONE[o.payment_status])}>{PAYMENT_STATUS[o.payment_status] || o.payment_status}</span></td>
+                        <td><span className={pillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS[o.status] || o.status}</span></td>
                       </tr>
                     ))}
                   </tbody>

@@ -57,7 +57,7 @@ export default function Estoque() {
 
       {error && <div className="alert-error">{error}</div>}
 
-      <div className="stat-strip" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      <div className="stat-strip cols-3">
         <div className="stat"><div className="stat-lb">Esgotados</div><div className="stat-vl" style={{ color: 'var(--bad)' }}>{summary?.esgotados ?? '—'}</div></div>
         <div className="stat"><div className="stat-lb">Estoque baixo</div><div className="stat-vl" style={{ color: 'var(--warn)' }}>{summary?.baixo ?? '—'}</div></div>
         <div className="stat"><div className="stat-lb">Disponíveis</div><div className="stat-vl" style={{ color: 'var(--ok)' }}>{summary?.ok ?? '—'}</div></div>

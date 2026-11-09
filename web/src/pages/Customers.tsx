@@ -91,7 +91,11 @@ export default function Customers() {
             )}
             {list.map((c) => (
               <tr key={c.id} className="row-link" onClick={() => navigate(`/clientes/${c.id}`)}>
-                <td><strong>{c.name}</strong>{c.email ? <div className="muted small">{c.email}</div> : null}</td>
+                <td>
+                  <strong>{c.name}</strong>
+                  {(c.orders_count ?? 0) >= 2 && <span className="pill pill-ok" style={{ marginLeft: 8, fontSize: '.68rem', verticalAlign: 'middle' }}>Recorrente</span>}
+                  {c.email ? <div className="muted small">{c.email}</div> : null}
+                </td>
                 <td className="mono">{c.whatsapp || c.phone || '—'}</td>
                 <td className="right mono">{c.orders_count ?? 0}</td>
                 <td className="right mono">{formatBRL(c.total_spent ?? 0)}</td>

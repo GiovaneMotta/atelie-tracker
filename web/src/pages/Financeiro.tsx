@@ -42,10 +42,10 @@ export default function Financeiro() {
 
       {adding && <EntryForm onSaved={() => { setAdding(false); load(); }} />}
 
-      <div className="kpi-row">
-        <div className="kpi"><span className="kpi-label">Entradas</span><strong className="kpi-value mg-ok">{data ? formatBRL(data.summary.entradas) : '—'}</strong></div>
-        <div className="kpi"><span className="kpi-label">Saídas</span><strong className="kpi-value mg-bad">{data ? formatBRL(data.summary.saidas) : '—'}</strong></div>
-        <div className="kpi"><span className="kpi-label">Saldo do mês</span><strong className={`kpi-value ${data && data.summary.saldo < 0 ? 'mg-bad' : 'mg-ok'}`}>{data ? formatBRL(data.summary.saldo) : '—'}</strong></div>
+      <div className="stat-strip cols-3">
+        <div className="stat"><div className="stat-lb">Entradas</div><div className="stat-vl mg-ok">{data ? formatBRL(data.summary.entradas) : '—'}</div></div>
+        <div className="stat"><div className="stat-lb">Saídas</div><div className="stat-vl mg-bad">{data ? formatBRL(data.summary.saidas) : '—'}</div></div>
+        <div className="stat"><div className="stat-lb">Saldo do mês</div><div className={`stat-vl ${data && data.summary.saldo < 0 ? 'mg-bad' : 'mg-ok'}`}>{data ? formatBRL(data.summary.saldo) : '—'}</div></div>
       </div>
 
       {data && (

@@ -52,6 +52,26 @@ function Section<T>({ title, rows, cols, csvName }: { title: string; rows: T[]; 
   );
 }
 
+/** Gráfico de barras horizontais (reaproveita o visual de "origem" do dashboard). */
+function ChartCard({ title, rows, fmt }: { title: string; rows: { label: string; value: number }[]; fmt: (n: number) => string }) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return (
+    <div className="pnl">
+      <div className="pnl-h"><h3>{title}</h3></div>
+      {rows.length ? (
+        <div className="chan">
+          {rows.map((r, i) => (
+            <div className="chan-row" key={i}>
+              <div className="chan-top"><span className="chan-name">{r.label}</span><span className="chan-meta">{fmt(r.value)}</span></div>
+              <div className="chan-bar"><div className="chan-fill" style={{ width: `${Math.max(4, (r.value / max) * 100)}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      ) : <div className="chart-empty" style={{ padding: '24px 12px' }}>Sem dados no período.</div>}
+    </div>
+  );
+}
+
 export default function Relatorios() {
   const [period, setPeriod] = useState('30d');
   const [d, setD] = useState<Report | null>(null);
@@ -81,6 +101,13 @@ export default function Relatorios() {
         <div className="stat"><div className="stat-lb">Ticket médio</div><div className="stat-vl">{d ? formatBRL(d.summary.ticket) : '—'}</div></div>
         <div className="stat"><div className="stat-lb">Itens vendidos</div><div className="stat-vl">{d ? d.summary.itens : '—'}</div></div>
       </div>
+
+      {d && (d.by_product.length > 0 || d.by_channel.length > 0) && (
+        <div className="dash-2" style={{ marginBottom: 20 }}>
+          <ChartCard title="Mais vendidos (receita)" rows={d.by_product.slice(0, 6).map((p) => ({ label: p.name, value: p.receita }))} fmt={formatBRL} />
+          <ChartCard title="Origem das vendas (receita)" rows={d.by_channel.map((c) => ({ label: CHANNEL[c.channel] || c.channel, value: c.receita }))} fmt={formatBRL} />
+        </div>
+      )}
 
       {loading && !d && <p className="muted center" style={{ marginTop: 20 }}>Carregando relatórios…</p>}
 

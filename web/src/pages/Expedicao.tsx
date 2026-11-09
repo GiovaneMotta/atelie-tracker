@@ -52,11 +52,11 @@ export default function Expedicao() {
       </div>
 
       {stats && (
-        <div className="kpi-row">
-          <div className="kpi"><span className="kpi-label">Envios hoje</span><strong className="kpi-value">{stats.envios_hoje}</strong></div>
-          <div className="kpi"><span className="kpi-label">Aguardando etiqueta</span><strong className="kpi-value">{countBy(['rascunho', 'cotado', 'aguardando_confirmacao', 'gerando'])}</strong></div>
-          <div className="kpi"><span className="kpi-label">Em trânsito</span><strong className="kpi-value">{countBy(['em_transito', 'saiu_entrega', 'postado'])}</strong></div>
-          <div className="kpi"><span className="kpi-label">Frete no mês</span><strong className="kpi-value">{formatBRL(stats.frete_mes)}</strong></div>
+        <div className="stat-strip">
+          <div className="stat"><div className="stat-lb">Envios hoje</div><div className="stat-vl">{stats.envios_hoje}</div></div>
+          <div className="stat"><div className="stat-lb">Aguardando etiqueta</div><div className="stat-vl">{countBy(['rascunho', 'cotado', 'aguardando_confirmacao', 'gerando'])}</div></div>
+          <div className="stat"><div className="stat-lb">Em trânsito</div><div className="stat-vl">{countBy(['em_transito', 'saiu_entrega', 'postado'])}</div></div>
+          <div className="stat"><div className="stat-lb">Frete no mês</div><div className="stat-vl">{formatBRL(stats.frete_mes)}</div></div>
         </div>
       )}
 

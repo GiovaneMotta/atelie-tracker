@@ -1,15 +1,13 @@
 /* ====================================================================
    Pagamento do pedido.
 
-   Antes o painel só tinha a fila "Avançar status", onde dava para clicar
-   em "Pago" sem registrar pagamento nenhum — e o card de pagamento
-   continuava "Pendente". Dois campos (status e payment_status) contando
-   histórias diferentes sobre o mesmo pedido.
-
-   Aqui o estado é consequência de um fato: registra-se a forma de
-   pagamento, e o status do pedido avança junto.
+   O estado é consequência de um fato: registra-se a forma de pagamento,
+   e o status do pedido avança junto. A sequência de PATCH é a MESMA de
+   sempre — é ela que o backend usa para disparar o Purchase (CAPI).
+   Aqui só adicionamos confirmação e um aviso claro desse disparo, e a
+   possibilidade de abrir o formulário a partir da "ação principal".
    ==================================================================== */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 
@@ -34,10 +32,13 @@ interface Props {
   paymentStatus: string;
   paymentMethod: string | null;
   onChanged: () => void;
+  /** Incrementado pela "ação principal" para abrir e rolar até aqui. */
+  openSignal?: number;
 }
 
-export default function OrderPayment({ orderId, status, paymentStatus, paymentMethod, onChanged }: Props) {
+export default function OrderPayment({ orderId, status, paymentStatus, paymentMethod, onChanged, openSignal = 0 }: Props) {
   const { can } = useAuth();
+  const ref = useRef<HTMLDivElement>(null);
   const [registrando, setRegistrando] = useState(false);
   const [forma, setForma] = useState(paymentMethod || 'pix');
   const [busy, setBusy] = useState(false);
@@ -46,7 +47,21 @@ export default function OrderPayment({ orderId, status, paymentStatus, paymentMe
   const pago = paymentStatus === 'pago';
   const podeEditar = can('orders.write');
 
+  // A "ação principal recomendada" (na tela do pedido) pede para abrir aqui.
+  useEffect(() => {
+    if (openSignal > 0 && !pago && podeEditar) {
+      setRegistrando(true);
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSignal]);
+
   async function registrar() {
+    const formaLabel = FORMAS.find((f) => f.key === forma)?.label || forma;
+    if (!confirm(
+      `Registrar o pagamento (${formaLabel}) e confirmar a venda?\n\n` +
+      'Isto dispara o evento de compra (Purchase) para a Meta. Não deve ser desfeito sem motivo.'
+    )) return;
     setBusy(true); setErro('');
     try {
       await apiFetch(`/api/orders?id=${orderId}`, {
@@ -71,6 +86,7 @@ export default function OrderPayment({ orderId, status, paymentStatus, paymentMe
   }
 
   async function estornar() {
+    if (!confirm('Marcar o pagamento como ESTORNADO?\n\nUse quando a cobrança foi devolvida ao cliente.')) return;
     setBusy(true); setErro('');
     try {
       await apiFetch(`/api/orders?id=${orderId}`, {
@@ -83,7 +99,7 @@ export default function OrderPayment({ orderId, status, paymentStatus, paymentMe
   }
 
   return (
-    <div className="card">
+    <div className="card" ref={ref} id="card-pagamento">
       <h3>Pagamento</h3>
       <p>
         <span className={'badge' + (pago ? ' badge-ok' : '')}>{SITUACAO[paymentStatus] || paymentStatus}</span>
@@ -91,13 +107,18 @@ export default function OrderPayment({ orderId, status, paymentStatus, paymentMe
       </p>
 
       {registrando && (
-        <div className="form-grid">
-          <label className="field"><span>Forma de pagamento</span>
-            <select value={forma} onChange={(e) => setForma(e.target.value)}>
-              {FORMAS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
-            </select>
-          </label>
-        </div>
+        <>
+          <div className="form-grid">
+            <label className="field"><span>Forma de pagamento</span>
+              <select value={forma} onChange={(e) => setForma(e.target.value)}>
+                {FORMAS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+              </select>
+            </label>
+          </div>
+          <p className="muted small" style={{ marginTop: 2 }}>
+            Ao confirmar, a venda é registrada e o <strong>Purchase</strong> é enviado para a Meta.
+          </p>
+        </>
       )}
 
       {erro && <div className="alert-error">{erro}</div>}
