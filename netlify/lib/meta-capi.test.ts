@@ -105,6 +105,19 @@ describe('valor e identificação corretos', () => {
     expect(ev.user_data.ln[0]).toMatch(hex);
     expect(ev.user_data.external_id[0]).toMatch(hex);
     expect(JSON.stringify(ev.user_data)).not.toContain('marina@exemplo.com');
+    // pedido do site: action_source website, sem messaging_channel
+    expect(ev.action_source).toBe('website');
+    expect(ev.messaging_channel).toBeUndefined();
+  });
+});
+
+describe('action_source / messaging_channel', () => {
+  it('pedido fora do site vai como business_messaging COM messaging_channel (exigido pela Meta)', async () => {
+    h.state.order = baseOrder({ channel: 'teste' });
+    await enviarPurchase('ord-123', env({ META_TEST_EVENT_CODE: 'TEST123' }));
+    const ev = sentBody().data[0];
+    expect(ev.action_source).toBe('business_messaging');
+    expect(ev.messaging_channel).toBe('whatsapp');
   });
 });
 

@@ -147,6 +147,9 @@ export async function enviarPurchase(orderId: string, env: Record<string, string
       event_id: eventId,
       action_source: veioDoSite ? 'website' : 'business_messaging',
       ...(veioDoSite && env.SITE_URL ? { event_source_url: env.SITE_URL } : {}),
+      // business_messaging exige o canal (a Meta rejeita o Purchase sem ele);
+      // os pedidos fora do site do ateliê fecham pelo WhatsApp.
+      ...(veioDoSite ? {} : { messaging_channel: 'whatsapp' }),
       user_data: userData,
       custom_data: {
         currency: 'BRL',
