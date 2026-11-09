@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { apiFetch } from '../lib/api';
@@ -156,6 +156,13 @@ interface Line { product: PickProduct; variant: PickVariant | null; quantity: nu
    manual e pedido do site precisam ser lidos do mesmo jeito. */
 const CHAVE_NOME = 'nome';
 
+/* Cadastro rápido de cliente novo (nome + telefone + endereço), preenchível
+   colando texto do WhatsApp. É só o rascunho do formulário; nada é gravado
+   até "Criar pedido". */
+type NovoCliente = { name: string; phone: string; cep: string; street: string; number: string; complement: string; district: string; city: string; state: string };
+const NOVO_VAZIO: NovoCliente = { name: '', phone: '', cep: '', street: '', number: '', complement: '', district: '', city: '', state: '' };
+const NOVO_CAMPOS = Object.keys(NOVO_VAZIO) as (keyof NovoCliente)[];
+
 function ProdThumb({ url }: { url?: string | null }) {
   const [src, setSrc] = useState(url ? thumbSrc(url) : '');
   if (!url) return <span className="prod-thumb prod-thumb-empty" aria-hidden="true" />;
@@ -190,6 +197,87 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
   const [teste, setTeste] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // --- Cliente: buscar existente OU cadastrar novo (preenchível por texto) ---
+  const [custMode, setCustMode] = useState<'search' | 'novo'>('search');
+  const [novo, setNovo] = useState<NovoCliente>(NOVO_VAZIO);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [dupes, setDupes] = useState<PickCustomer[]>([]);
+  const [parsing, setParsing] = useState(false);
+  const [parseInfo, setParseInfo] = useState<{ source?: string; cepLookup?: boolean; error?: string } | null>(null);
+  // Lembra o cliente/endereço criados nesta tentativa: num retry (falha parcial)
+  // reaproveita em vez de duplicar. Limpo ao editar os dados ou ao concluir.
+  const created = useRef<{ customerId?: string; addressId?: string }>({});
+
+  /* Dedupe pelo telefone: avisa se já existe cliente com esse número. */
+  async function buscarDuplicados(phone: string) {
+    const d = phone.replace(/\D/g, '');
+    if (d.length < 10) { setDupes([]); return; }
+    try {
+      const r = await apiFetch<{ customers: PickCustomer[] }>(`/api/customers?search=${encodeURIComponent(d)}`);
+      const match = r.customers.filter((c) => (c.phone || '').replace(/\D/g, '').includes(d) || (c.whatsapp || '').replace(/\D/g, '').includes(d));
+      setDupes(match.slice(0, 3));
+    } catch { setDupes([]); }
+  }
+  function setNovoCampo(k: keyof NovoCliente, v: string) {
+    setNovo((s) => ({ ...s, [k]: v }));
+    created.current = {};               // dados mudaram: não reutilizar o criado antes
+    if (k === 'phone') buscarDuplicados(v);
+  }
+  /* CEP completa rua/bairro/cidade/UF VAZIOS (não sobrescreve o colado). */
+  async function cepAutocomplete(cep: string) {
+    setNovo((s) => ({ ...s, cep }));
+    const limpo = cep.replace(/\D/g, '');
+    if (limpo.length !== 8) return;
+    try {
+      const d = await apiFetch<{ street?: string; district?: string; city?: string; state?: string }>(`/api/cep?cep=${limpo}`);
+      setNovo((s) => ({
+        ...s,
+        street: s.street || d.street || '', district: s.district || d.district || '',
+        city: s.city || d.city || '', state: s.state || d.state || '',
+      }));
+    } catch { /* CEP não achado: segue manual */ }
+  }
+  const fmtCep = (c: string) => { const d = (c || '').replace(/\D/g, ''); return d.length === 8 ? d.slice(0, 5) + '-' + d.slice(5) : (c || ''); };
+  /* Lê o texto pelo MESMO leitor da expedição (/api/parse-recipient:
+     heurística grátis + IA opcional + ViaCEP pelo CEP). Não inventa (só o
+     que achou) e não sobrescreve campo já preenchido sem avisar. */
+  async function aplicarTexto() {
+    if (pasteText.trim().length < 5) return;
+    setParsing(true); setParseInfo(null);
+    try {
+      const d = await apiFetch<{ recipient: Record<string, string>; source: string; cep_lookup: boolean }>(
+        '/api/parse-recipient', { method: 'POST', body: JSON.stringify({ text: pasteText }) });
+      const rec = d.recipient || {};
+      const p: NovoCliente = {
+        name: rec.name || '', phone: rec.phone || '', cep: fmtCep(rec.cep || ''), street: rec.street || '',
+        number: rec.number || '', complement: rec.complement || '', district: rec.district || '',
+        city: rec.city || '', state: rec.state || '',
+      };
+      const conflitos = NOVO_CAMPOS.filter((k) => novo[k].trim() && p[k] && novo[k].trim() !== p[k]);
+      let overwrite = true;
+      if (conflitos.length) {
+        overwrite = window.confirm('Alguns campos já preenchidos têm valor diferente do texto. Substituir pelos dados detectados?\n\n(Cancelar mantém os atuais e preenche só os campos vazios.)');
+      }
+      setNovo((cur) => {
+        const next = { ...cur };
+        for (const k of NOVO_CAMPOS) { if (!p[k]) continue; if (!cur[k].trim() || overwrite) next[k] = p[k]; }
+        return next;
+      });
+      if (p.phone) buscarDuplicados(p.phone);
+      created.current = {};             // dados novos: começa do zero num eventual retry
+      setParseInfo({ source: d.source, cepLookup: d.cep_lookup });
+      setPasteOpen(false); setPasteText('');
+    } catch (err) {
+      setParseInfo({ error: err instanceof Error ? err.message : 'Não consegui ler os dados.' });
+    } finally { setParsing(false); }
+  }
+  function usarExistente(c: PickCustomer) {
+    setCustomer(c); setCustMode('search'); setNovo(NOVO_VAZIO); setDupes([]); setPasteOpen(false); setPasteText('');
+  }
+  const novoTemEndereco = Boolean(novo.cep || novo.street || novo.number || novo.district || novo.city || novo.state);
+  const novoPendenteNome = custMode === 'novo' && !novo.name.trim() && (novoTemEndereco || !!novo.phone);
 
   async function searchCustomers(q: string) {
     setCustQuery(q);
@@ -262,8 +350,40 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
   async function save() {
     setBusy(true); setError('');
     try {
+      let customerId = customer?.id || null;
+      let novoAddressId: string | null = null;
+      // Cliente novo por texto: cria cliente (+ endereço) ANTES do pedido.
+      // Reusa os endpoints existentes; o fluxo de quem escolhe cliente/sem
+      // cliente continua idêntico. Em retry, reaproveita o já criado (não duplica).
+      if (!customerId && custMode === 'novo' && novo.name.trim()) {
+        if (created.current.customerId) {
+          customerId = created.current.customerId;
+        } else {
+          const c = await apiFetch<{ customer: { id: string } }>('/api/customers', {
+            method: 'POST',
+            body: JSON.stringify({ name: novo.name.trim(), phone: novo.phone || null, whatsapp: novo.phone || null }),
+          });
+          customerId = c.customer.id;
+          created.current.customerId = customerId;
+        }
+        if (novoTemEndereco) {
+          if (created.current.addressId) {
+            novoAddressId = created.current.addressId;
+          } else {
+            const a = await apiFetch<{ address: { id: string } }>('/api/addresses', {
+              method: 'POST',
+              body: JSON.stringify({
+                customer_id: customerId, cep: novo.cep, street: novo.street, number: novo.number,
+                complement: novo.complement, district: novo.district, city: novo.city, state: novo.state,
+              }),
+            });
+            novoAddressId = a.address.id;
+            created.current.addressId = novoAddressId;
+          }
+        }
+      }
       const payload = {
-        customer_id: customer?.id || null,
+        customer_id: customerId,
         items: lines.map((l) => ({
           product_id: l.product.id,
           variant_id: l.variant?.id ?? null,
@@ -276,6 +396,11 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
         channel: teste ? 'teste' : undefined,
       };
       const data = await apiFetch<{ order: { id: string } }>('/api/orders', { method: 'POST', body: JSON.stringify(payload) });
+      if (novoAddressId) {
+        try { await apiFetch(`/api/orders?id=${data.order.id}`, { method: 'PATCH', body: JSON.stringify({ address_id: novoAddressId }) }); }
+        catch { /* endereço fica salvo no cliente; dá para vincular no detalhe do pedido */ }
+      }
+      created.current = {};   // pedido criado: zera o rascunho de ids
       onCreated(data.order.id);
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao criar pedido.'); } finally { setBusy(false); }
   }
@@ -288,14 +413,77 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
 
       <div className="card">
         <h3>Cliente</h3>
-        {customer
-          ? <div className="picked">{customer.name} <button className="btn-link" onClick={() => setCustomer(null)}>trocar</button></div>
-          : (
-            <div className="picker">
-              <input placeholder="Buscar cliente…" value={custQuery} onChange={(e) => searchCustomers(e.target.value)} />
-              {custResults.map((c) => <button key={c.id} className="picker-opt" onClick={() => { setCustomer(c); setCustResults([]); setCustQuery(''); }}>{c.name} <span className="muted">{c.whatsapp || c.phone}</span></button>)}
+        {customer ? (
+          <div className="picked">{customer.name} <button className="btn-link" onClick={() => setCustomer(null)}>trocar</button></div>
+        ) : (
+          <>
+            <div className="cat-tabs" style={{ marginBottom: 10 }}>
+              <button type="button" className={'cat-tab' + (custMode === 'search' ? ' is-on' : '')} onClick={() => setCustMode('search')}>Buscar existente</button>
+              <button type="button" className={'cat-tab' + (custMode === 'novo' ? ' is-on' : '')} onClick={() => setCustMode('novo')}>Novo cliente</button>
             </div>
-          )}
+
+            {custMode === 'search' ? (
+              <div className="picker">
+                <input placeholder="Buscar cliente…" value={custQuery} onChange={(e) => searchCustomers(e.target.value)} />
+                {custResults.map((c) => <button key={c.id} className="picker-opt" onClick={() => { setCustomer(c); setCustResults([]); setCustQuery(''); }}>{c.name} <span className="muted">{c.whatsapp || c.phone}</span></button>)}
+              </div>
+            ) : (
+              <>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPasteOpen((o) => !o)}>
+                  {pasteOpen ? '▾ ' : '＋ '}Preencher dados automaticamente
+                </button>
+                {pasteOpen && (
+                  <div className="paste-box">
+                    <textarea rows={5} value={pasteText} onChange={(e) => setPasteText(e.target.value)}
+                      placeholder={'Cole aqui a mensagem do WhatsApp com os dados do cliente…\nEx.:\nNome: Maria\nWhatsApp: (98) 98888-7766\nCEP: 65000-000\nRua das Flores, 123 - Centro\nSão Luís - MA'} />
+                    <div className="form-actions">
+                      <button type="button" className="btn btn-primary btn-sm" disabled={parsing || pasteText.trim().length < 5} onClick={aplicarTexto}>{parsing ? 'Lendo…' : 'Analisar e preencher'}</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setPasteOpen(false); setPasteText(''); }}>Cancelar</button>
+                    </div>
+                    <p className="muted small">Lê nome, telefone, CEP e endereço em formatos variados. Nada é salvo até você conferir e clicar em “Criar pedido”.</p>
+                  </div>
+                )}
+                {parseInfo?.error && <div className="alert-error" style={{ marginTop: 8 }}>{parseInfo.error}</div>}
+                {parseInfo && !parseInfo.error && (
+                  <p className="small" style={{ marginTop: 6, color: '#2e7d32' }}>
+                    ✓ Preenchido {parseInfo.source === 'ia' ? 'com leitura inteligente' : 'automaticamente'}{parseInfo.cepLookup ? ' · endereço completado pelo CEP' : ''}. Confira abaixo.
+                  </p>
+                )}
+
+                {dupes.length > 0 && (
+                  <div className="alert-warn">
+                    <strong>Já existe cliente com este telefone.</strong> Para não duplicar, selecione:{' '}
+                    {dupes.map((d) => (
+                      <button key={d.id} type="button" className="btn-link" onClick={() => usarExistente(d)}>{d.name}</button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="form-grid" style={{ marginTop: 12 }}>
+                  <label className="field span-all"><span>Nome *</span>
+                    <input value={novo.name} onChange={(e) => setNovoCampo('name', e.target.value)} placeholder="Nome do cliente" /></label>
+                  <label className="field"><span>WhatsApp</span>
+                    <input value={novo.phone} inputMode="numeric" onChange={(e) => setNovoCampo('phone', e.target.value)} placeholder="(00) 00000-0000" /></label>
+                  <label className="field"><span>CEP</span>
+                    <input value={novo.cep} inputMode="numeric" onChange={(e) => cepAutocomplete(e.target.value)} placeholder="00000-000" /></label>
+                  <label className="field span-all"><span>Rua</span>
+                    <input value={novo.street} onChange={(e) => setNovoCampo('street', e.target.value)} /></label>
+                  <label className="field"><span>Número</span>
+                    <input value={novo.number} onChange={(e) => setNovoCampo('number', e.target.value)} /></label>
+                  <label className="field"><span>Complemento</span>
+                    <input value={novo.complement} onChange={(e) => setNovoCampo('complement', e.target.value)} /></label>
+                  <label className="field"><span>Bairro</span>
+                    <input value={novo.district} onChange={(e) => setNovoCampo('district', e.target.value)} /></label>
+                  <label className="field"><span>Cidade</span>
+                    <input value={novo.city} onChange={(e) => setNovoCampo('city', e.target.value)} /></label>
+                  <label className="field"><span>UF</span>
+                    <input value={novo.state} maxLength={2} onChange={(e) => setNovoCampo('state', e.target.value.toUpperCase())} /></label>
+                </div>
+                {novoPendenteNome && <p className="small" style={{ color: '#9a6a00', marginTop: 8 }}>Informe o <strong>nome</strong> para cadastrar o cliente.</p>}
+              </>
+            )}
+          </>
+        )}
       </div>
 
       <div className="card">
@@ -394,7 +582,7 @@ function NewOrder({ onCancel, onCreated }: { onCancel: () => void; onCreated: (i
       )}
       {error && <div className="alert-error">{error}</div>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={busy || lines.length === 0 || semTamanho.length > 0} onClick={save}>{busy ? 'Criando…' : 'Criar pedido'}</button>
+        <button className="btn btn-primary" disabled={busy || lines.length === 0 || semTamanho.length > 0 || novoPendenteNome} onClick={save}>{busy ? 'Criando…' : 'Criar pedido'}</button>
         <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
       </div>
     </div>

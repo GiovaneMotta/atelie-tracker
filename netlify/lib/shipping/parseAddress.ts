@@ -49,8 +49,14 @@ export function parseAddressHeuristic(input: string): ParsedRecipient {
   const streetLine = text.split(/[\n,]/).map((s) => s.trim())
     .find((s) => /^(rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|al\.?|estrada|rod(?:ovia)?|quadra|qd|pra[çc]a)\b/i.test(s));
   if (streetLine) {
-    out.street = streetLine.replace(/\s*,?\s*n[º°o]?\.?\s*\d+.*$/i, '').replace(/\s*,\s*\d+.*$/, '').trim();
-    const num = streetLine.match(/n[º°o]?\.?\s*(\d{1,6})\b/i) || streetLine.match(/,\s*(\d{1,6})\b/);
+    out.street = streetLine
+      .replace(/\s*,?\s*n[º°o]?\.?\s*\d+.*$/i, '')   // "nº 123 ..."
+      .replace(/\s*,\s*\d+.*$/, '')                   // ", 123 ..."
+      .replace(/\s+\d{1,6}\s*$/, '')                  // "Rua X 123" (número solto no fim)
+      .trim();
+    const num = streetLine.match(/n[º°o]?\.?\s*(\d{1,6})\b/i)
+      || streetLine.match(/,\s*(\d{1,6})\b/)
+      || streetLine.match(/\s(\d{1,6})\s*$/);         // número solto no fim da linha
     if (num) out.number = num[1];
   }
   if (!out.number) {

@@ -6,8 +6,8 @@
    Permissão: shipping.quote (quem cota/cria envio).
    ================================================================ */
 import type { Handler } from '@netlify/functions';
-import { withHttp, json, parseBody, badRequest } from '../lib/http';
-import { requirePermission } from '../lib/auth';
+import { withHttp, json, parseBody, badRequest, forbidden } from '../lib/http';
+import { getAuth } from '../lib/auth';
 import { logIntegration } from '../lib/log';
 import { parseAddressHeuristic, type ParsedRecipient } from '../lib/shipping/parseAddress';
 import { aiExtractRecipient, aiConfigured } from '../lib/shipping/aiExtract';
@@ -28,7 +28,12 @@ function merge(base: ParsedRecipient, over: ParsedRecipient | null): ParsedRecip
 
 export const handler: Handler = withHttp(async (event) => {
   if (event.httpMethod !== 'POST') throw badRequest('Método não suportado.');
-  await requirePermission(event, 'shipping.quote');
+  // Leitor de texto (não grava nada): disponível para quem cota envio OU
+  // cadastra cliente (ex.: tela de novo pedido).
+  const ctx = await getAuth(event);
+  if (!ctx.has('shipping.quote') && !ctx.has('customers.write')) {
+    throw forbidden('Sem permissão para usar o leitor de dados.');
+  }
 
   const body = parseBody<{ text?: string }>(event);
   const text = String(body.text || '').trim();

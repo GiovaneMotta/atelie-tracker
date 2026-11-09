@@ -142,6 +142,16 @@
 
 .alert-error { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad-soft); padding: 10px 14px;
   border-radius: var(--radius-sm); margin-bottom: 12px; font-size: .88rem; }
+/* Aviso (ex.: cliente duplicado) — tom âmbar, distinto do erro vermelho. */
+.alert-warn { background: #FCF3E3; color: #8a5a12; border: 1px solid #EBD6A8; padding: 9px 13px;
+  border-radius: var(--radius-sm); margin: 10px 0; font-size: .85rem; line-height: 1.5; }
+.alert-warn .btn-link { color: #7a4e0c; font-weight: 600; text-decoration: underline; margin: 0 2px; }
+/* Caixa de "colar dados do WhatsApp" (cadastro rápido por texto). */
+.paste-box { margin: 8px 0 4px; }
+.paste-box textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 96px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font: inherit;
+  font-size: .9rem; background: var(--surface-tint); color: var(--ink); }
+.paste-box textarea:focus { outline: none; border-color: var(--terracota-soft); background: var(--surface); }
 
 /* ============================ Login ============================ */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: var(--bg); }
