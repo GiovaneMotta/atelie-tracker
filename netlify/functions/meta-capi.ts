@@ -145,11 +145,12 @@ export async function enviarPurchase(orderId: string, env: Record<string, string
       event_name: 'Purchase',
       event_time: Math.floor(Date.now() / 1000),
       event_id: eventId,
-      action_source: veioDoSite ? 'website' : 'business_messaging',
+      // Site -> website. Demais (venda lançada no painel: manual/WhatsApp) ->
+      // system_generated. business_messaging exigiria page_id + ctwa_clid de uma
+      // conversa real de Click-to-WhatsApp (anúncio); para uma venda registrada no
+      // CRM, system_generated é o correto e a Meta aceita sem esses parâmetros.
+      action_source: veioDoSite ? 'website' : 'system_generated',
       ...(veioDoSite && env.SITE_URL ? { event_source_url: env.SITE_URL } : {}),
-      // business_messaging exige o canal (a Meta rejeita o Purchase sem ele);
-      // os pedidos fora do site do ateliê fecham pelo WhatsApp.
-      ...(veioDoSite ? {} : { messaging_channel: 'whatsapp' }),
       user_data: userData,
       custom_data: {
         currency: 'BRL',

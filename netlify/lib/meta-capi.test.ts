@@ -111,13 +111,13 @@ describe('valor e identificação corretos', () => {
   });
 });
 
-describe('action_source / messaging_channel', () => {
-  it('pedido fora do site vai como business_messaging COM messaging_channel (exigido pela Meta)', async () => {
+describe('action_source por origem', () => {
+  it('pedido fora do site vai como system_generated (aceito pela Meta, sem page_id/messaging_channel)', async () => {
     h.state.order = baseOrder({ channel: 'teste' });
     await enviarPurchase('ord-123', env({ META_TEST_EVENT_CODE: 'TEST123' }));
     const ev = sentBody().data[0];
-    expect(ev.action_source).toBe('business_messaging');
-    expect(ev.messaging_channel).toBe('whatsapp');
+    expect(ev.action_source).toBe('system_generated');
+    expect(ev.messaging_channel).toBeUndefined();
   });
 });
 
