@@ -29,6 +29,7 @@ import Logs from './pages/Logs';
 import Placeholder from './pages/Placeholder';
 import Stub from './pages/Stub';
 import Estoque from './pages/Estoque';
+import OrdemVitrine from './pages/OrdemVitrine';
 import ConteudoSite from './pages/ConteudoSite';
 import Marketing from './pages/Marketing';
 import Relatorios from './pages/Relatorios';
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="automacoes" element={<Automacoes />} />
         <Route path="estoque" element={<Estoque />} />
+        <Route path="catalogo/ordem" element={<OrdemVitrine />} />
         <Route path="site/conteudo" element={<ConteudoSite />} />
         <Route path="site/seo" element={<SeoPage />} />
         <Route path="marketing" element={<Marketing />} />

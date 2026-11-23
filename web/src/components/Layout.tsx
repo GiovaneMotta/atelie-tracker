@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import {
   LayoutDashboard, ShoppingBag, Factory, PackageCheck, Truck, Calendar,
   Package, Boxes, Tags, Wallet, Users, CheckSquare, Settings2, ScrollText,
-  Globe, Megaphone, BarChart3, FileText, Search, ExternalLink, Menu,
+  Globe, Megaphone, BarChart3, FileText, Search, ExternalLink, Menu, ArrowUpDown,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../lib/api';
@@ -24,6 +24,7 @@ const NAV: NavGroup[] = [
   ] },
   { title: 'Catálogo', items: [
     { to: '/produtos', label: 'Produtos', icon: Package, perm: 'products.read' },
+    { to: '/catalogo/ordem', label: 'Ordem da vitrine', icon: ArrowUpDown, perm: 'products.read' },
     { to: '/estoque', label: 'Estoque', icon: Boxes, perm: 'products.read' },
     { to: '/precificacao', label: 'Precificação', icon: Tags, perm: 'products.read' },
   ] },

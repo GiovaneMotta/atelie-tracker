@@ -15,6 +15,7 @@ import { handler as aiSettings } from '../../netlify/functions/ai-settings';
 import { handler as aiSuggest } from '../../netlify/functions/ai-suggest';
 import { handler as automations } from '../../netlify/functions/automations';
 import { handler as calendar } from '../../netlify/functions/calendar';
+import { handler as catalogOrder } from '../../netlify/functions/catalog-order';
 import { handler as cep } from '../../netlify/functions/cep';
 import { handler as conversations } from '../../netlify/functions/conversations';
 import { handler as coupons } from '../../netlify/functions/coupons';
@@ -53,7 +54,7 @@ import { handler as wascriptTest } from '../../netlify/functions/wascript-test';
 
 const HANDLERS: Record<string, (event: any, ctx: any) => Promise<any>> = {
   'addresses': addresses, 'agenda': agenda, 'ai-settings': aiSettings, 'ai-suggest': aiSuggest,
-  'automations': automations, 'calendar': calendar, 'cep': cep, 'conversations': conversations,
+  'automations': automations, 'calendar': calendar, 'catalog-order': catalogOrder, 'cep': cep, 'conversations': conversations,
   'coupons': coupons, 'customers': customers, 'dashboard': dashboard, 'finance': finance, 'frenet-env': frenetEnv, 'frenet-settings': frenetSettings,
   'frenet-test': frenetTest, 'health': health, 'integration-logs': integrationLogs, 'inventory': inventory, 'knowledge': knowledge,
   'leads': leads, 'materials': materials, 'me': me, 'meta-capi': metaCapi, 'messages': messages, 'orders': orders,

@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['netlify/**/*.test.ts'],
+    /* web/src: só lógica pura do painel (ex.: regra da Ordem da vitrine) */
+    include: ['netlify/**/*.test.ts', 'web/src/**/*.test.ts'],
   },
 });
