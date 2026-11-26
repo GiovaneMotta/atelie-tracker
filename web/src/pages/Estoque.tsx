@@ -15,7 +15,7 @@ interface Item {
 }
 interface Summary { esgotados: number; baixo: number; ok: number; total: number; }
 
-const SITE_BASE = 'https://ateliedalili-site.pages.dev';
+const SITE_BASE = 'https://ateliedalili.com.br';
 const src = (u: string | null) => !u ? '' : (/^https?:\/\//i.test(u) ? u : `${SITE_BASE}/${u.replace(/^\/+/, '')}`);
 const STATUS: Record<string, { label: string; pill: string }> = {
   esgotado: { label: 'Esgotado', pill: 'pill pill-bad' },

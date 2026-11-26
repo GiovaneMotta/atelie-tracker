@@ -50,7 +50,7 @@ const NAV: NavGroup[] = [
   ] },
 ];
 
-const SITE_URL = 'https://ateliedalili-site.pages.dev';
+const SITE_URL = 'https://ateliedalili.com.br';
 
 export default function Layout() {
   const { me, signOut, can } = useAuth();

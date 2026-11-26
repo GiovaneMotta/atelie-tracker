@@ -166,8 +166,9 @@ export const NEXT_STATUS: Record<string, string[]> = {
   cancelado: [],
 };
 
-/* Imagens do produto vivem no site publico, nao no painel. */
-export const SITE_BASE = 'https://ateliedalili-site.pages.dev';
+/* Imagens do produto vivem no site publico, nao no painel. Dominio oficial
+   (nunca o ...pages.dev): daqui saem os links "Ver no site" que a equipe copia. */
+export const SITE_BASE = 'https://ateliedalili.com.br';
 
 function isAbsolute(u: string): boolean {
   return u.startsWith('http://') || u.startsWith('https://');

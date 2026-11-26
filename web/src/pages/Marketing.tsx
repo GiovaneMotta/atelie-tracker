@@ -63,7 +63,7 @@ export default function Marketing() {
         </div>
       </form>
 
-      <UtmGenerator defaultBase={f.siteUrl || 'https://ateliedalili-site.pages.dev'} />
+      <UtmGenerator defaultBase={f.siteUrl || 'https://ateliedalili.com.br'} />
 
       <MetaEventos writable={writable} />
       <CouponsManager writable={writable} />

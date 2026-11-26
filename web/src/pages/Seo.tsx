@@ -16,7 +16,7 @@ function Counter({ n, max }: { n: number; max: number }) {
 function Snippet({ url, title, desc }: { url: string; title: string; desc: string }) {
   return (
     <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '14px 16px', background: 'var(--surface)', maxWidth: 600 }}>
-      <div className="mono small" style={{ color: 'var(--ink-soft)' }}>{url || 'ateliedalili-site.pages.dev'}</div>
+      <div className="mono small" style={{ color: 'var(--ink-soft)' }}>{url || 'ateliedalili.com.br'}</div>
       <div style={{ color: '#1a56c4', fontSize: '1.05rem', lineHeight: 1.3, margin: '2px 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title || 'Título da página'}</div>
       <div style={{ color: 'var(--ink-soft)', fontSize: '.86rem', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{desc || 'A descrição aparece aqui, resumindo a página para quem busca no Google.'}</div>
     </div>
