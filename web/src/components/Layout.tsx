@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../lib/api';
+import { sincronizarInscricao } from '../lib/push';
 
 type Icon = ComponentType<{ size?: number; strokeWidth?: number }>;
 interface NavItemDef { to: string; label: string; icon: Icon; perm?: string; end?: boolean; }
@@ -59,6 +60,12 @@ export default function Layout() {
   const [env, setEnv] = useState<{ environment: string; partner_configured: boolean } | null>(null);
 
   useEffect(() => { apiFetch<{ environment: string; partner_configured: boolean }>('/api/frenet-env').then(setEnv).catch(() => setEnv(null)); }, []);
+
+  /* O navegador troca a inscrição de push sozinho de vez em quando
+     (rotação de chave). Sem isto o servidor ficaria com o endereço
+     velho e as notificações parariam em silêncio. Só faz algo em quem
+     já ativou: sem permissão concedida, retorna na hora. */
+  useEffect(() => { sincronizarInscricao(); }, []);
 
   const groups = useMemo(() => {
     const term = q.trim().toLowerCase();

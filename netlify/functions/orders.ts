@@ -122,6 +122,10 @@ export const handler: Handler = withHttp(async (event) => {
     const { data: before } = await sb.from('orders').select('*').eq('id', id).maybeSingle();
     if (!before) throw notFound('Pedido não encontrado.');
 
+    /* Virou pago AGORA? Serve só para empurrar a fila de notificação no
+       fim (quem decide o que notificar é o gatilho do banco, 0032). */
+    let virouPago = false;
+
     // 1) Mudança de status: passa pela máquina de estados (trigger).
     if (typeof body.status === 'string' && body.status !== before.status) {
       if (body.status === 'cancelado' && !ctx.has('orders.cancel')) {
@@ -133,6 +137,7 @@ export const handler: Handler = withHttp(async (event) => {
         throw conflict(error.message.replace(/^.*?:\s*/, '') || 'Transição de status inválida.');
       }
       await writeAudit({ actorId: ctx.userId, action: 'update', entity: 'order', entityId: id, reason: 'Mudança de status', oldValue: { status: before.status }, newValue: { status: body.status } });
+      if (body.status === 'pago' && before.status !== 'pago') virouPago = true;
     }
 
     // 2) Campos simples (recalcula total se desconto/frete mudarem).
@@ -176,11 +181,28 @@ export const handler: Handler = withHttp(async (event) => {
        Meta fora do ar nao pode impedir a Lili de registrar que recebeu.
        O que falhar fica pendente em meta_events e e reenviado. */
     if (fields.payment_status === 'pago' && before.payment_status !== 'pago') {
+      virouPago = true;
       try {
         const { enviarPurchase } = await import('./meta-capi');
         await enviarPurchase(id, process.env as Record<string, string | undefined>);
       } catch (e) {
         console.warn('[meta-capi] envio falhou, fica pendente:', String(e));
+      }
+    }
+
+    /* "Venda aprovada!" no celular. Quem DECIDE que houve venda é o
+       gatilho do banco (0032), que já colocou o aviso na fila dentro da
+       mesma transação da gravação. Aqui só pedimos que a fila ande
+       agora, para o celular tocar no mesmo segundo em vez de esperar o
+       pg_net ou o minuto do cron. Mesmo motivo do Meta CAPI acima: vem
+       DEPOIS da gravação e dentro de try/catch — notificação nunca pode
+       impedir a Lili de registrar que recebeu. */
+    if (virouPago) {
+      try {
+        const { dispatchPending } = await import('./push-dispatch');
+        await dispatchPending(process.env as Record<string, string | undefined>);
+      } catch (e) {
+        console.warn('[push] envio adiado para a retentativa:', String(e));
       }
     }
 

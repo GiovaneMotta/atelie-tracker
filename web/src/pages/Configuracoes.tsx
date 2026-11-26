@@ -15,7 +15,7 @@ const AREAS: Area[] = [
   { icon: Search, title: 'SEO', desc: 'Título, descrição, Open Graph e indexação.', to: '/site/seo', ready: true },
   { icon: Globe, title: 'Site / Conteúdo', desc: 'Textos, banners, vitrines e informações do site.', to: '/site/conteudo', ready: true },
   { icon: Users, title: 'Usuários e permissões', desc: 'Equipe, papéis e acessos (admin, atendente, expedição, financeiro).' },
-  { icon: Bell, title: 'Notificações', desc: 'Alertas de novo pedido, pagamento, estoque e integrações.' },
+  { icon: Bell, title: 'Notificações', desc: 'Avisos no celular quando entra pedido e quando a venda é aprovada.', to: '/config/notificacoes', ready: true },
 ];
 
 export default function Configuracoes() {

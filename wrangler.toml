@@ -8,5 +8,17 @@ pages_build_output_dir = "web/dist"
 
 # Variáveis de runtime (não-secretas) das Functions.
 # A service_role (secreta) é cadastrada como Secret na dashboard do Cloudflare.
+#
+# Como este arquivo gerencia as variáveis do projeto, a dashboard da
+# Cloudflare só aceita cadastrar SECRETS — variável de texto tem que vir
+# daqui. Por isso a chave VAPID pública mora neste arquivo e a privada,
+# só lá (VAPID_PRIVATE_KEY, como Secret).
 [vars]
 SUPABASE_URL = "https://cfwyrzvnodaqgfutbcph.supabase.co"
+
+# Identifica o painel para o serviço de push (FCM/Mozilla). É pública por
+# natureza: vai inteira para o navegador de quem ativa as notificações.
+VAPID_PUBLIC_KEY = "BFS9qtDL_XVelRB6tHw8FH33ql9Zul-lZIyXk9kxobQ2O4HfA_AjfsQPBN69cJyUoxkvB8cdOWBQUYVP2eGORYg"
+
+# Para quem o serviço de push reclama se algo der errado nos envios.
+VAPID_SUBJECT = "mailto:contato@ateliedalili.com.br"

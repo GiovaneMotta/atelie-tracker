@@ -39,6 +39,8 @@ import { handler as parseRecipient } from '../../netlify/functions/parse-recipie
 import { handler as pricing } from '../../netlify/functions/pricing';
 import { handler as production } from '../../netlify/functions/production';
 import { handler as productImage } from '../../netlify/functions/product-image';
+import { handler as push } from '../../netlify/functions/push';
+import { handler as pushDispatch } from '../../netlify/functions/push-dispatch';
 import { handler as reports } from '../../netlify/functions/reports';
 import { handler as products } from '../../netlify/functions/products';
 import { handler as shipmentCancel } from '../../netlify/functions/shipment-cancel';
@@ -59,7 +61,8 @@ const HANDLERS: Record<string, (event: any, ctx: any) => Promise<any>> = {
   'frenet-test': frenetTest, 'health': health, 'integration-logs': integrationLogs, 'inventory': inventory, 'knowledge': knowledge,
   'leads': leads, 'materials': materials, 'me': me, 'meta-capi': metaCapi, 'messages': messages, 'orders': orders,
   'parse-recipient': parseRecipient, 'pricing': pricing, 'production': production,
-  'product-image': productImage, 'products': products, 'reports': reports,
+  'product-image': productImage, 'products': products,
+  'push': push, 'push-dispatch': pushDispatch, 'reports': reports,
   'shipment-cancel': shipmentCancel, 'shipment-label': shipmentLabel, 'shipment-tracking': shipmentTracking,
   'shipments': shipments, 'shipping-quote': shippingQuote, 'shipping-stats': shippingStats,
   'site-settings': siteSettings, 'staff': staff,

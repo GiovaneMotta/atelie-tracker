@@ -1,0 +1,13 @@
+# Cloudflare Pages — cabeçalhos do painel.
+#
+# O Service Worker é o único arquivo que PRECISA ser sempre buscado da
+# rede: é ele que decide o que o navegador faz com a notificação, e um
+# SW velho preso em cache continuaria valendo por horas depois de um
+# deploy. Os assets com hash no nome (assets/*) seguem o cache padrão
+# da Cloudflare, que já é o correto.
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600

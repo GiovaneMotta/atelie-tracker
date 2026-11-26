@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sem conexão · Ateliê da Lili</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0; min-height: 100dvh; display: grid; place-items: center;
+    background: #faf8f7; color: #2c2622; padding: 24px;
+    font-family: Geist, Inter, -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  .card { max-width: 340px; text-align: center; }
+  .ico {
+    width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 16px;
+    background: #C0673F; display: grid; place-items: center; color: #fff; font-size: 26px;
+  }
+  h1 { font-size: 1.15rem; margin: 0 0 8px; font-weight: 600; }
+  p { margin: 0 0 20px; color: #6b615b; font-size: .94rem; line-height: 1.5; }
+  button {
+    border: 0; background: #C0673F; color: #fff; font: inherit; font-weight: 500;
+    padding: 11px 22px; border-radius: 10px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="ico">♥</div>
+    <h1>Sem conexão</h1>
+    <p>O painel precisa de internet para mostrar os pedidos. Assim que a conexão voltar, é só tentar de novo.</p>
+    <button onclick="location.reload()">Tentar de novo</button>
+  </div>
+</body>
+</html>

@@ -35,6 +35,7 @@ import Marketing from './pages/Marketing';
 import Relatorios from './pages/Relatorios';
 import SeoPage from './pages/Seo';
 import Configuracoes from './pages/Configuracoes';
+import Notificacoes from './pages/Notificacoes';
 import { BarChart3 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="envios/:id" element={<ShipmentDetail />} />
         <Route path="config/frenet" element={<FreteSettings />} />
         <Route path="config/logs" element={<Logs />} />
+        <Route path="config/notificacoes" element={<Notificacoes />} />
         <Route path="funil" element={<Funil />} />
         <Route path="tarefas" element={<Tarefas />} />
         <Route path="conhecimento" element={<Conhecimento />} />
