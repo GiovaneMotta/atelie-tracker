@@ -14,11 +14,23 @@
    ================================================================ */
 
 const CACHE = 'atelie-offline-v1';
-const OFFLINE = '/offline.html';
+
+/* SEM o ".html" de propósito. A Cloudflare Pages serve HTML sem a
+   extensão e responde 308 em "/offline.html". Guardar no cache uma
+   resposta que veio de redirecionamento quebraria exatamente quando
+   ela fosse usada: requisição de navegação tem redirect mode "manual",
+   e o navegador recusa resposta redirecionada nesse caso. */
+const OFFLINE = '/offline';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((c) => c.add(OFFLINE)).then(() => self.skipWaiting()),
+    caches.open(CACHE)
+      .then((c) => c.add(OFFLINE))
+      /* Guardar a página de "sem conexão" é um extra. Se falhar, o
+         Service Worker TEM que instalar assim mesmo — é ele que recebe
+         as notificações, e isso não pode depender de um cache. */
+      .catch(() => {})
+      .then(() => self.skipWaiting()),
   );
 });
 
