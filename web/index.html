@@ -9,7 +9,9 @@
     <!-- PWA: instalável no celular; é o que permite a notificação push -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#C0673F" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <!-- O iOS aplica a máscara dele e não entende transparência: este
+         ícone é quadrado cheio, senão os cantos virariam preto. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Ateliê" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
