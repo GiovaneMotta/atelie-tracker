@@ -193,11 +193,42 @@ export default function Notificacoes() {
       <div className="card">
         <h3>Este aparelho</h3>
 
-        {!suportado ? (
-          <p className="muted">
-            Este navegador não aceita notificações. No celular, use o <strong>Chrome</strong> (Android)
-            ou o <strong>Safari</strong> com o painel instalado na tela de início (iPhone).
-          </p>
+        {/* iPhone vem ANTES de "não suportado" de propósito: no iOS o
+            PushManager só existe depois de instalar na Tela de Início,
+            então o teste de suporte falha justamente para quem ainda
+            pode resolver. Mandar essa pessoa embora com "seu navegador
+            não aceita" seria mentira — falta um passo, só. */}
+        {iOSSemInstalar ? (
+          <>
+            <p style={{ marginBottom: 14 }}>
+              <strong>Falta um passo:</strong> no iPhone, as notificações só funcionam com o
+              painel instalado na Tela de Início. É rápido:
+            </p>
+            <ol className="muted" style={{ margin: '0 0 14px', paddingLeft: 20, lineHeight: 1.9 }}>
+              <li>Toque em <Share size={14} style={{ verticalAlign: 'middle' }} /> <strong>Compartilhar</strong>, na barra de baixo do Safari</li>
+              <li>Role e toque em <Plus size={14} style={{ verticalAlign: 'middle' }} /> <strong>Adicionar à Tela de Início</strong></li>
+              <li>Confirme em <strong>Adicionar</strong></li>
+              <li>Feche o Safari e abra o painel pelo <strong>ícone novo</strong> na sua tela</li>
+              <li>Faça login de novo — <em>é normal</em>, o aplicativo instalado tem a sessão dele</li>
+              <li>Volte nesta tela e o botão de ativar vai estar aqui</li>
+            </ol>
+            <p className="muted small">
+              Precisa ser pelo <strong>Safari</strong>. Chrome, Firefox e o navegador de dentro do
+              Instagram ou do WhatsApp não conseguem instalar no iPhone.
+            </p>
+          </>
+        ) : !suportado ? (
+          <>
+            <p className="muted" style={{ marginBottom: 10 }}>
+              Este navegador não aceita notificações.
+            </p>
+            <p className="muted small">
+              Se você abriu o painel por um link dentro do <strong>Instagram</strong> ou do{' '}
+              <strong>WhatsApp</strong>, é isso: o navegador embutido deles não recebe notificação.
+              Abra <code>atelie-tracker.pages.dev</code> direto no <strong>Chrome</strong> (Android)
+              ou no <strong>Safari</strong> (iPhone) e tente de novo.
+            </p>
+          </>
         ) : permissao === 'denied' ? (
           <>
             <p className="status-list" style={{ marginBottom: 10 }}>
@@ -229,14 +260,6 @@ export default function Notificacoes() {
               Ative para receber <strong>Novo pedido recebido!</strong> e <strong>Venda aprovada!</strong>{' '}
               neste aparelho, mesmo com o painel fechado.
             </p>
-            {iOSSemInstalar && (
-              <div className="alert-warn" style={{ marginBottom: 14 }}>
-                <strong>No iPhone é preciso instalar primeiro.</strong> Toque em{' '}
-                <Share size={14} style={{ verticalAlign: 'middle' }} /> <em>Compartilhar</em> ›{' '}
-                <Plus size={14} style={{ verticalAlign: 'middle' }} /> <em>Adicionar à Tela de Início</em>,
-                abra o painel por esse ícone e volte aqui.
-              </div>
-            )}
             <button className="btn btn-primary" onClick={ligar} disabled={ocupado || !estado?.configurado}>
               <BellRing size={15} /> {ocupado ? 'Ativando…' : 'Ativar neste aparelho'}
             </button>
