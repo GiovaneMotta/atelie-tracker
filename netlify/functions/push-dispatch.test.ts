@@ -322,6 +322,33 @@ describe('6) falha no envio', () => {
     expect(h.db.push_outbox[0].dispatched_at).toBeTruthy();             // nada ficou pendente
   });
 
+  it('se o ÚNICO aparelho estava morto, a fila registra que ninguém recebeu', async () => {
+    /* Aconteceu de verdade: entre o pedido entrar e o aviso sair, o app
+       foi reinstalado e a inscrição antiga virou lixo. Antes, a linha
+       era fechada como "entregue" sem erro nenhum — o aviso sumia sem
+       deixar rastro. */
+    h.db.orders = [pedido()];
+    h.db.push_devices = [await aparelho('cel-morto', 'Antes de reinstalar')];
+    h.db.push_outbox = [{ id: 'out-1', order_id: 'ord-1', kind: 'novo_pedido', attempts: 0, dispatched_at: null }];
+    respostas['https://fcm.googleapis.com/fcm/send/cel-morto'] = 410;
+
+    await dispatchPending(env);
+
+    expect(h.db.push_devices).toHaveLength(0);
+    expect(h.db.push_outbox[0].dispatched_at).toBeTruthy();
+    expect(h.db.push_outbox[0].last_error).toMatch(/nenhum aparelho recebeu/);
+  });
+
+  it('com um aparelho vivo junto, a entrega é registrada sem erro', async () => {
+    h.db.orders = [pedido()];
+    h.db.push_devices = [await aparelho('cel-morto', 'Velho'), await aparelho('cel-vivo', 'Atual')];
+    h.db.push_outbox = [{ id: 'out-1', order_id: 'ord-1', kind: 'novo_pedido', attempts: 0, dispatched_at: null }];
+    respostas['https://fcm.googleapis.com/fcm/send/cel-morto'] = 410;
+
+    await dispatchPending(env);
+    expect(h.db.push_outbox[0].last_error).toBeNull();
+  });
+
   it('404 também remove a inscrição', async () => {
     h.db.orders = [pedido()];
     h.db.push_devices = [await aparelho('cel-x', 'X')];

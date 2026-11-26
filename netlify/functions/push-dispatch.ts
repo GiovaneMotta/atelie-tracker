@@ -122,6 +122,11 @@ export async function dispatchPending(
 
     let aindaPendente = false;
     let ultimoErro = '';
+    /* Quantos aparelhos realmente receberam. Serve para não registrar
+       como entregue um aviso que, na prática, não chegou a ninguém —
+       acontece quando a única inscrição morreu (410) entre a criação do
+       pedido e o envio, por exemplo porque o app foi reinstalado. */
+    let entregues = 0;
 
     for (const ap of aparelhos) {
       /* TRAVA POR APARELHO (§37): grava a chave ANTES de enviar. Se já
@@ -141,6 +146,7 @@ export async function dispatchPending(
 
       if (r.ok) {
         resumo.enviados++;
+        entregues++;
         await sb.from('push_devices')
           .update({ last_success_at: new Date().toISOString(), failures: 0, last_error: null })
           .eq('id', ap.id);
@@ -170,10 +176,16 @@ export async function dispatchPending(
 
     const tentativas = (item.attempts ?? 0) + 1;
     if (!aindaPendente || tentativas >= MAX_TENTATIVAS) {
+      /* Fechar a linha dizendo "entregue" quando ninguém recebeu seria
+         mentira — e mentira que some, porque depois não há como saber
+         que aquele aviso se perdeu. O motivo fica gravado. */
+      const motivo = aindaPendente
+        ? `desistiu após ${tentativas} tentativas: ${ultimoErro}`
+        : (entregues === 0 ? `nenhum aparelho recebeu: ${ultimoErro || 'inscrição vencida'}` : null);
       await sb.from('push_outbox').update({
         dispatched_at: new Date().toISOString(),
         attempts: tentativas,
-        last_error: aindaPendente ? `desistiu após ${tentativas} tentativas: ${ultimoErro}`.slice(0, 300) : null,
+        last_error: motivo ? motivo.slice(0, 300) : null,
       }).eq('id', item.id);
       if (aindaPendente) {
         await logIntegration('ERROR', 'error', 'Notificação push desistida após várias tentativas', {
