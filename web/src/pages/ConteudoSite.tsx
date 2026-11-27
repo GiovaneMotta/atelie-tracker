@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Info, Plus, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
+import { Info, Plus, ArrowUp, ArrowDown, X, GripVertical } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 
@@ -10,12 +10,33 @@ interface Hero {
 }
 interface Banner { eyebrow: string; title: string; subtitle: string; image: string; buttonText: string; buttonLink: string; }
 interface Testimonial { name: string; local: string; text: string; }
+/* círculo de categoria da home: o slug é a categoria do catálogo; o rótulo
+   é opcional (vazio = o site usa o nome padrão daquela categoria) */
+interface HomeCat { slug: string; label: string; }
 interface Settings {
   atelieName: string; whatsappNumber: string; instagram: string; siteUrl: string;
-  whatsappMessage: string; payment: Payment; content: Hero; banners: Banner[]; testimonials: Testimonial[];
+  whatsappMessage: string; payment: Payment; content: Hero; banners: Banner[];
+  testimonials: Testimonial[]; homeCategorias: HomeCat[];
 }
 const EMPTY_BANNER: Banner = { eyebrow: '', title: '', subtitle: '', image: '', buttonText: 'Ver a coleção', buttonLink: '#catalogo' };
 const EMPTY_TESTIMONIAL: Testimonial = { name: '', local: '', text: '' };
+
+/* Nomes bonitos das categorias conhecidas — os mesmos do site
+   (js/categorybar.js). Categoria nova, ainda sem nome aqui, vira texto
+   legível: "porta-maternidade" -> "Porta maternidade". */
+const NOMES_CATEGORIA: Record<string, string> = {
+  menina: 'Menina', menino: 'Menino', gemeos: 'Gêmeos', unissex: 'Unissex',
+  fralda: 'Fraldas', cueiro: 'Cueiros', manta: 'Mantas', enxoval: 'Enxoval',
+  'toalha-fralda': 'Toalha Fralda', 'toalha-capuz': 'Toalha c/ Capuz',
+  'kit-leito': 'Kit Leito', kit: 'Kits', acessorios: 'Acessórios',
+  batizado: 'Batizado', mamae: 'Mamãe', luxo: 'Luxo', promocao: 'Promoção',
+  'sapato-faixa': 'Sapatinho + Faixa', 'sapatinho-menina': 'Sapatinhos Menina',
+  'sapatinho-menino': 'Sapatinhos Menino', touca: 'Toucas',
+};
+const nomeCategoria = (slug: string) =>
+  NOMES_CATEGORIA[slug] || slug.replace(/-/g, ' ').replace(/^./, (m) => m.toUpperCase());
+/* "modelo:"/"pecas:" agrupam peças irmãs — não são categorias de vitrine */
+const ehTagInterna = (c: string) => c.startsWith('modelo:') || c.startsWith('pecas:');
 
 export default function ConteudoSite() {
   const { can } = useAuth();
@@ -40,6 +61,25 @@ export default function ConteudoSite() {
   const addTesti = () => setF((s) => s ? { ...s, testimonials: [...s.testimonials, { ...EMPTY_TESTIMONIAL }] } : s);
   const removeTesti = (i: number) => setF((s) => s ? { ...s, testimonials: s.testimonials.filter((_, j) => j !== i) } : s);
 
+  /* ── círculos de categoria da home ── */
+  const [catalogo, setCatalogo] = useState<{ slug: string; n: number }[]>([]);
+  const arrastando = useRef<number | null>(null);
+  const [sobre, setSobre] = useState<number | null>(null);
+  const setCat = (i: number, k: keyof HomeCat, v: string) =>
+    setF((s) => s ? { ...s, homeCategorias: s.homeCategorias.map((c, j) => j === i ? { ...c, [k]: v } : c) } : s);
+  const addCat = (slug: string) =>
+    setF((s) => s && !s.homeCategorias.some((c) => c.slug === slug)
+      ? { ...s, homeCategorias: [...s.homeCategorias, { slug, label: '' }] } : s);
+  const removeCat = (i: number) =>
+    setF((s) => s ? { ...s, homeCategorias: s.homeCategorias.filter((_, j) => j !== i) } : s);
+  const moveCat = (de: number, para: number) => setF((s) => {
+    if (!s) return s;
+    const a = [...s.homeCategorias];
+    if (de < 0 || de >= a.length || para < 0 || para >= a.length || de === para) return s;
+    const [x] = a.splice(de, 1); a.splice(para, 0, x);
+    return { ...s, homeCategorias: a };
+  });
+
   async function load() {
     setLoading(true);
     try {
@@ -48,10 +88,25 @@ export default function ConteudoSite() {
         ...data.settings,
         banners: Array.isArray(data.settings.banners) ? data.settings.banners : [],
         testimonials: Array.isArray(data.settings.testimonials) ? data.settings.testimonials : [],
+        homeCategorias: (Array.isArray(data.settings.homeCategorias) ? data.settings.homeCategorias : [])
+          .map((c: any) => typeof c === 'string' ? { slug: c, label: '' } : { slug: String(c?.slug || ''), label: String(c?.label || '') })
+          .filter((c: HomeCat) => c.slug),
       });
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao carregar.'); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+
+  /* categorias que existem de verdade no catálogo, com a contagem de peças —
+     a lista de escolha cresce sozinha conforme a Lili cadastra linhas novas */
+  useEffect(() => {
+    apiFetch<{ items: { categories: string[] }[] }>('/api/catalog-order').then((d) => {
+      const conta: Record<string, number> = {};
+      (d.items || []).forEach((p) => (p.categories || []).forEach((c) => {
+        if (c && !ehTagInterna(c)) conta[c] = (conta[c] || 0) + 1;
+      }));
+      setCatalogo(Object.entries(conta).map(([slug, n]) => ({ slug, n })).sort((a, b) => b.n - a.n));
+    }).catch(() => setCatalogo([]));
+  }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -144,6 +199,82 @@ export default function ConteudoSite() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="card">
+          <h3>Categorias da página inicial</h3>
+          <p className="muted small" style={{ marginTop: 4 }}>
+            Os círculos com foto logo abaixo do banner. Arraste para mudar a ordem; o site mostra
+            os <b>5 primeiros</b> e acrescenta "Ver catálogo" no fim. Categoria sem peça ativa não
+            aparece no site, mesmo estando aqui. Deixar a lista vazia = o site escolhe sozinho.
+          </p>
+
+          {f.homeCategorias.length === 0 && (
+            <div className="att-calm" style={{ marginTop: 12 }}>
+              Nenhuma escolhida — o site usa as categorias com mais peças, automaticamente.
+            </div>
+          )}
+
+          {f.homeCategorias.map((c, i) => {
+            const n = catalogo.find((x) => x.slug === c.slug)?.n;
+            const semPecas = catalogo.length > 0 && !n;
+            return (
+              <div
+                key={c.slug}
+                className="card hc-item"
+                style={{
+                  background: 'var(--surface-tint)', marginTop: 10, marginBottom: 0,
+                  outline: sobre === i && arrastando.current !== null && arrastando.current !== i ? '2px dashed var(--terracota)' : 'none',
+                  opacity: arrastando.current === i ? 0.4 : 1,
+                }}
+                onDragOver={(e: DragEvent) => { if (arrastando.current !== null) { e.preventDefault(); setSobre(i); } }}
+                onDrop={(e: DragEvent) => { e.preventDefault(); if (arrastando.current !== null) moveCat(arrastando.current, i); arrastando.current = null; setSobre(null); }}
+              >
+                <div className="card-head-row" style={{ marginBottom: 10, gap: 8 }}>
+                  {writable && (
+                    <span
+                      draggable
+                      onDragStart={() => { arrastando.current = i; }}
+                      onDragEnd={() => { arrastando.current = null; setSobre(null); }}
+                      title="Arraste para reordenar"
+                      style={{ cursor: 'grab', display: 'inline-flex', color: 'var(--ink-faint)' }}
+                    ><GripVertical size={16} /></span>
+                  )}
+                  <strong style={{ fontSize: '.9rem' }}>{i + 1}. {nomeCategoria(c.slug)}</strong>
+                  <span className={semPecas ? 'pill pill-warn' : 'pill'} style={{ fontSize: '.7rem' }}>
+                    {semPecas ? 'sem peças — não aparece' : (n ?? '—') + ' peças'}
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  {writable && <div style={{ display: 'flex', gap: 4 }}>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={i === 0} onClick={() => moveCat(i, i - 1)} aria-label={`Subir ${nomeCategoria(c.slug)}`}><ArrowUp size={14} /></button>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={i === f.homeCategorias.length - 1} onClick={() => moveCat(i, i + 1)} aria-label={`Descer ${nomeCategoria(c.slug)}`}><ArrowDown size={14} /></button>
+                    <button type="button" className="btn btn-ghost btn-sm btn-danger" onClick={() => removeCat(i)} aria-label={`Tirar ${nomeCategoria(c.slug)} da home`}><X size={14} /></button>
+                  </div>}
+                </div>
+                <div className="form-grid">
+                  <label className="field span-all">
+                    <span>Nome que aparece no círculo</span>
+                    <input value={c.label} onChange={(e) => setCat(i, 'label', e.target.value)}
+                      placeholder={nomeCategoria(c.slug) + ' (padrão)'} disabled={!writable} />
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+
+          {writable && (
+            <div style={{ marginTop: 14 }}>
+              <p className="muted small" style={{ marginBottom: 6 }}>Adicionar categoria:</p>
+              <div className="chips">
+                {catalogo.filter((x) => !f.homeCategorias.some((c) => c.slug === x.slug)).map((x) => (
+                  <button key={x.slug} type="button" className="chip" onClick={() => addCat(x.slug)}>
+                    <Plus size={13} style={{ verticalAlign: '-2px' }} /> {nomeCategoria(x.slug)} <span className="muted">({x.n})</span>
+                  </button>
+                ))}
+                {catalogo.length === 0 && <span className="muted small">Carregando as categorias do catálogo…</span>}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="card">

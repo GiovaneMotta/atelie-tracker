@@ -108,6 +108,23 @@ function sanitize(body: any, current: Record<string, any>): Record<string, any> 
       text: String(t.text ?? '').slice(0, 500),
     })).filter((t) => t.name || t.text);
   }
+  /* Círculos de categoria da home: quais entram, em que ordem e com que nome.
+     Guarda só o slug (a categoria do catálogo) e um rótulo opcional — a foto
+     e o link o site resolve sozinho. Lista vazia = volta ao automático.
+     Serve para as linhas que ainda virão (porta-maternidade, fraldas, mantas,
+     enxoval, kit de berço...) sem precisar mexer no código do site. */
+  if (Array.isArray(body.homeCategorias)) {
+    const vistos = new Set<string>();
+    next.homeCategorias = body.homeCategorias.slice(0, 12).map((c: any) => {
+      const slug = String((typeof c === 'string' ? c : c?.slug) ?? '').trim().slice(0, 60);
+      const label = String((typeof c === 'string' ? '' : c?.label) ?? '').trim().slice(0, 40);
+      return { slug, label };
+    }).filter((c) => {
+      if (!c.slug || vistos.has(c.slug)) return false;   // sem vazio e sem repetida
+      vistos.add(c.slug);
+      return true;
+    });
+  }
   return next;
 }
 
